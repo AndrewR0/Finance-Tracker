@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Local data (the SQLite database holds your real finances)
+*.db
+*.sqlite3
+
+# Frontend (for later)
+node_modules/
+frontend/dist/
+
+# Editors / OS
+.vscode/
+.DS_Store
+Thumbs.db
+
+CLAUDE.md
+docs
