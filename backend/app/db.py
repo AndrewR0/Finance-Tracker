@@ -15,12 +15,14 @@ DATABASE_URL = os.environ.get("FINANCE_DB_URL", f"sqlite:///{DEFAULT_DB_PATH}")
 engine = create_engine(DATABASE_URL)
 
 
-@event.listens_for(engine, "connect")
-def _enable_sqlite_foreign_keys(dbapi_connection, _connection_record):
+def enable_sqlite_foreign_keys(dbapi_connection, _connection_record):
     # SQLite ignores foreign keys unless you switch them on for every connection.
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA foreign_keys=ON")
     cursor.close()
+
+
+event.listen(engine, "connect", enable_sqlite_foreign_keys)
 
 
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
