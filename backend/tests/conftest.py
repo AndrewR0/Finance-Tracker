@@ -1,7 +1,7 @@
 """Shared test setup. pytest loads this file automatically.
 
-Every test that asks for `client` gets an app wired to a brand-new, empty,
-in-memory database, so tests never touch finance.db or each other.
+Every test gets a brand-new, empty, in-memory database, so tests never touch
+finance.db or each other.
 """
 
 import pytest
@@ -15,7 +15,7 @@ from app.main import app
 
 
 @pytest.fixture
-def db_session():
+def session_factory():
     # StaticPool keeps one connection open. An in-memory SQLite database
     # disappears when its connection closes, so every session must share it.
     engine = create_engine(
@@ -26,17 +26,26 @@ def db_session():
     event.listen(engine, "connect", enable_sqlite_foreign_keys)
     Base.metadata.create_all(engine)
 
-    TestSession = sessionmaker(bind=engine, expire_on_commit=False)
-    with TestSession() as session:
-        yield session
+    yield sessionmaker(bind=engine, expire_on_commit=False)
 
     engine.dispose()
 
 
 @pytest.fixture
-def client(db_session):
-    # Dependency override: wherever a route asks for get_db, hand it the test session.
-    app.dependency_overrides[get_db] = lambda: db_session
+def db_session(session_factory):
+    """For tests that set up rows directly, skipping the API."""
+    with session_factory() as session:
+        yield session
+
+
+@pytest.fixture
+def client(session_factory):
+    # Dependency override: each request gets its own fresh session, like the real app.
+    def get_test_db():
+        with session_factory() as session:
+            yield session
+
+    app.dependency_overrides[get_db] = get_test_db
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()

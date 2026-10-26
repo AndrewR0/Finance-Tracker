@@ -9,14 +9,14 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
-from app.models import AccountType
+from app.models import AccountType, CategoryKind
 
 # Trims surrounding spaces, then requires 1-100 characters.
-AccountName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
+Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
 
 
 class AccountCreate(BaseModel):
-    name: AccountName
+    name: Name
     type: AccountType
 
 
@@ -29,3 +29,24 @@ class AccountRead(BaseModel):
     type: AccountType
     created_at: datetime
     closed_at: datetime | None
+
+
+class CategoryCreate(BaseModel):
+    name: Name
+    kind: CategoryKind
+    parent_id: int | None = None  # leave out for a top-level category
+
+
+class CategoryRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    kind: CategoryKind
+    parent_id: int | None
+
+
+class CategoryTree(CategoryRead):
+    """A top-level category with its subcategories nested inside."""
+
+    subcategories: list[CategoryRead]
