@@ -1,5 +1,6 @@
 """Account endpoints: /api/accounts"""
 
+import datetime as dt
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -7,9 +8,10 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.balances import get_balances
 from app.db import get_db
 from app.models import Account
-from app.schemas import AccountCreate, AccountRead
+from app.schemas import AccountCreate, AccountRead, AccountWithBalance
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 
@@ -17,11 +19,20 @@ router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 DbSession = Annotated[Session, Depends(get_db)]
 
 
-@router.get("", response_model=list[AccountRead])
-def list_accounts(db: DbSession):
+@router.get("", response_model=list[AccountWithBalance])
+def list_accounts(db: DbSession, as_of: dt.date | None = None):
+    """Every account with its balance. ?as_of=2026-10-31 gives balances at the end of that day."""
     # Open accounts first (closed_at IS NULL sorts first), then alphabetical.
     query = select(Account).order_by(Account.closed_at.is_not(None), Account.name)
-    return db.scalars(query).all()
+    accounts = db.scalars(query).all()
+    balances = get_balances(db, as_of)
+    return [
+        AccountWithBalance(
+            **AccountRead.model_validate(account).model_dump(),
+            balance_cents=balances.get(account.id, 0),  # no transactions yet = 0
+        )
+        for account in accounts
+    ]
 
 
 @router.post("", response_model=AccountRead, status_code=status.HTTP_201_CREATED)

@@ -32,6 +32,11 @@ class AccountRead(BaseModel):
     closed_at: datetime | None
 
 
+class AccountWithBalance(AccountRead):
+    # Calculated from transactions when the response is built, not a column.
+    balance_cents: int
+
+
 class CategoryCreate(BaseModel):
     name: Name
     kind: CategoryKind
