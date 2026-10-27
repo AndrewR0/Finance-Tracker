@@ -92,10 +92,42 @@ class Transaction(Base):
     payee_id: Mapped[int | None] = mapped_column(ForeignKey("payees.id"))
     category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"))
     notes: Mapped[str | None] = mapped_column(String(500))
+    # Set on both legs of a transfer; None for ordinary income and expenses.
+    transfer_id: Mapped[int | None] = mapped_column(ForeignKey("transfers.id"), index=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     payee: Mapped[Payee | None] = relationship()
+    transfer: Mapped["Transfer | None"] = relationship(back_populates="legs")
 
     @property
     def payee_name(self) -> str | None:
         return self.payee.name if self.payee else None
+
+    @property
+    def transfer_description(self) -> str | None:
+        return self.transfer.description if self.transfer else None
+
+
+class Transfer(Base):
+    """Links the two legs of a move between accounts: money out of one, into the other.
+
+    Date and amount live on the legs only, so there is one source of truth.
+    """
+
+    __tablename__ = "transfers"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    description: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+    legs: Mapped[list[Transaction]] = relationship(back_populates="transfer")
+
+    @property
+    def from_leg(self) -> Transaction:
+        """The leg where money leaves (negative amount)."""
+        return next(leg for leg in self.legs if leg.amount_cents < 0)
+
+    @property
+    def to_leg(self) -> Transaction:
+        """The leg where money arrives (positive amount)."""
+        return next(leg for leg in self.legs if leg.amount_cents > 0)

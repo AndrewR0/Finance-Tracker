@@ -8,7 +8,7 @@ import datetime as dt
 from datetime import datetime
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, StrictInt, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, StringConstraints
 
 from app.models import AccountType, CategoryKind
 
@@ -78,4 +78,26 @@ class TransactionRead(BaseModel):
     payee_name: str | None
     category_id: int | None
     notes: str | None
+    transfer_id: int | None
+    transfer_description: str | None
     created_at: datetime
+
+
+class TransferCreate(BaseModel):
+    from_account_id: int
+    to_account_id: int
+    date: dt.date
+    # Always positive here: the server makes the "from" leg negative and the "to" leg positive.
+    amount_cents: Annotated[StrictInt, Field(gt=0)]
+    description: Notes | None = None
+    category_id: int | None = None  # must be a transfer-kind category
+
+
+class TransferRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    description: str | None
+    created_at: datetime
+    from_leg: TransactionRead
+    to_leg: TransactionRead

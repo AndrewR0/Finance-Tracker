@@ -4,7 +4,7 @@ import os
 from collections.abc import Iterator
 from pathlib import Path
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import MetaData, create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 # The database file sits next to the backend folder by default.
@@ -30,6 +30,16 @@ SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
 class Base(DeclarativeBase):
     """Every model inherits from this, so Alembic can find all tables in one place."""
+
+    # Give every constraint a predictable name. SQLite migrations (batch mode)
+    # can only add or drop a constraint they can refer to by name.
+    metadata = MetaData(naming_convention={
+        "ix": "ix_%(table_name)s_%(column_0_N_name)s",
+        "uq": "uq_%(table_name)s_%(column_0_N_name)s",
+        "ck": "ck_%(table_name)s_%(constraint_name)s",
+        "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+        "pk": "pk_%(table_name)s",
+    })
 
 
 def get_db() -> Iterator[Session]:

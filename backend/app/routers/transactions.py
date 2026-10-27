@@ -1,14 +1,15 @@
-"""Transaction endpoints: /api/transactions (income and expenses; transfers come later)."""
+"""Transaction endpoints: /api/transactions (income and expenses; transfers live in transfers.py)."""
 
 import datetime as dt
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
+from app.checks import check_category_kind, get_category, get_open_account
 from app.db import get_db
-from app.models import Account, Category, CategoryKind, Payee, Transaction
+from app.models import Payee, Transaction
 from app.schemas import TransactionCreate, TransactionRead
 
 router = APIRouter(prefix="/api/transactions", tags=["transactions"])
@@ -26,8 +27,9 @@ def list_transactions(
     """Newest first. Optional filters: ?account_id=1&start=2026-10-01&end=2026-10-31 (inclusive)."""
     query = (
         select(Transaction)
-        # Many-to-one (each transaction has at most one payee): a JOIN fetches it in the same query.
-        .options(joinedload(Transaction.payee))
+        # Many-to-one (each transaction has at most one payee and one transfer):
+        # a JOIN fetches them in the same query, so there's no N+1.
+        .options(joinedload(Transaction.payee), joinedload(Transaction.transfer))
         .order_by(Transaction.date.desc(), Transaction.id.desc())
     )
     if account_id is not None:
@@ -41,19 +43,9 @@ def list_transactions(
 
 def check_references(db: Session, payload: TransactionCreate) -> None:
     """Raise HTTPException(422) if the account or category can't be used."""
-    account = db.get(Account, payload.account_id)
-    if account is None:
-        raise HTTPException(status_code=422, detail=f"Account {payload.account_id} does not exist.")
-    if account.closed_at is not None:
-        raise HTTPException(status_code=422, detail=f"{account.name} is closed, so it can't get new transactions.")
-
-    if payload.category_id is None:
-        return
-    category = db.get(Category, payload.category_id)
-    if category is None:
-        raise HTTPException(status_code=422, detail=f"Category {payload.category_id} does not exist.")
-    if category.kind == CategoryKind.TRANSFER:
-        raise HTTPException(status_code=422, detail="Use the transfer endpoint for transfers between accounts.")
+    get_open_account(db, payload.account_id)
+    if payload.category_id is not None:
+        check_category_kind(get_category(db, payload.category_id), transfer=False)
 
 
 def get_or_create_payee(db: Session, name: str) -> Payee:
