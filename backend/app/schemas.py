@@ -72,6 +72,25 @@ class TransactionCreate(BaseModel):
     notes: Notes | None = None
 
 
+class TransactionUpdate(BaseModel):
+    """PATCH body: send only the fields you want to change.
+
+    Fields typed without "| None" (account_id, date, amount_cents) can be left out,
+    but sending them as null is rejected, since a transaction can't lack them.
+    Fields with "| None" can be sent as null to clear them.
+    """
+
+    # Reject unknown fields, so a typo like "amount" fails loudly instead of being ignored.
+    model_config = ConfigDict(extra="forbid")
+
+    account_id: int = None
+    date: dt.date = None
+    amount_cents: StrictInt = None
+    payee: Name | None = None
+    category_id: int | None = None
+    notes: Notes | None = None
+
+
 class TransactionRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -96,6 +115,17 @@ class TransferCreate(BaseModel):
     amount_cents: Annotated[StrictInt, Field(gt=0)]
     description: Notes | None = None
     category_id: int | None = None  # must be a transfer-kind category
+
+
+class TransferUpdate(BaseModel):
+    """PATCH body for a transfer. Same rules as TransactionUpdate."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    date: dt.date = None
+    amount_cents: Annotated[StrictInt, Field(gt=0)] = None
+    description: Notes | None = None
+    category_id: int | None = None
 
 
 class TransferRead(BaseModel):

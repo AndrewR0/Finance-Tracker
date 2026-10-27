@@ -120,7 +120,8 @@ class Transfer(Base):
     description: Mapped[str | None] = mapped_column(String(200))
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
-    legs: Mapped[list[Transaction]] = relationship(back_populates="transfer")
+    # cascade: deleting a Transfer deletes its legs too, so half a transfer can't be left behind.
+    legs: Mapped[list[Transaction]] = relationship(back_populates="transfer", cascade="all, delete-orphan")
 
     @property
     def from_leg(self) -> Transaction:
