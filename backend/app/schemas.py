@@ -136,3 +136,12 @@ class TransferRead(BaseModel):
     created_at: datetime
     from_leg: TransactionRead
     to_leg: TransactionRead
+
+
+class DashboardSummary(BaseModel):
+    start: dt.date
+    end: dt.date
+    net_worth_cents: int  # all account balances at the end of `end`
+    income_cents: int
+    spending_cents: int  # positive number; refunds reduce it
+    saved_cents: int  # income - spending; negative if you spent more than you earned
