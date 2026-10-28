@@ -145,3 +145,10 @@ class DashboardSummary(BaseModel):
     income_cents: int
     spending_cents: int  # positive number; refunds reduce it
     saved_cents: int  # income - spending; negative if you spent more than you earned
+
+
+class CashFlowMonth(BaseModel):
+    month: str  # "2026-10"
+    income_cents: int
+    spending_cents: int
+    saved_cents: int

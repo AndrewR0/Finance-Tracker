@@ -56,6 +56,55 @@ def income_and_spending(db: Session, start: dt.date, end: dt.date) -> tuple[int,
     return income, spending
 
 
+def last_n_months(end: dt.date, n: int) -> list[str]:
+    """The n months up to and including end's month, oldest first, as "YYYY-MM".
+
+    last_n_months(date(2026, 10, 31), 3) -> ["2026-08", "2026-09", "2026-10"]
+    """
+    year = end.year
+    month = end.month
+    months = []
+    for _ in range(n):
+        months.append(f"{year}-{month:02d}")
+        month -= 1
+        if month == 0:
+            year, month = year -1, 12
+
+    return months[::-1]
+
+
+def cash_flow(db: Session, end: dt.date, months: int) -> list[dict]:
+    """Income, spending and saved for each of the `months` months ending at end's month.
+
+    Every month is present, oldest first, even with no transactions (all zeros).
+    """
+    labels = last_n_months(end, months)
+    start = dt.date.fromisoformat(labels[0] + "-01")  # first day of the oldest month
+
+    # SQLite stores dates as "2026-10-22" text; strftime cuts that down to "2026-10".
+    month = func.strftime("%Y-%m", Transaction.date)
+    query = (
+        select(month, func.sum(income_cents()), func.sum(spending_cents()))
+        .select_from(Transaction)
+        .outerjoin(Category, Transaction.category_id == Category.id)
+        .where(
+            Transaction.transfer_id.is_(None),
+            Transaction.date >= start,
+            Transaction.date <= end,
+        )
+        .group_by(month)
+    )
+    # {"2026-10": (income, spending)}, only for months that have transactions.
+    totals = {label: (income, spending) for label, income, spending in db.execute(query)}
+
+    rows = []
+    for label in labels:
+        income, spending = totals.get(label, (0, 0))  # a quiet month is zeros, not missing
+        rows.append({"month": label, "income_cents": income, "spending_cents": spending,
+                     "saved_cents": income - spending})
+    return rows
+
+
 def net_worth(db: Session, as_of: dt.date) -> int:
     """Everything you have minus everything you owe, at the end of as_of."""
     return sum(get_balances(db, as_of).values())
