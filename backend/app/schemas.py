@@ -152,3 +152,16 @@ class CashFlowMonth(BaseModel):
     income_cents: int
     spending_cents: int
     saved_cents: int
+
+
+class SubcategorySpending(BaseModel):
+    category_id: int | None  # None = Uncategorized
+    name: str
+    spending_cents: int
+    previous_cents: int | None  # None when no compare period was asked for
+
+
+class CategorySpending(SubcategorySpending):
+    """A top-level category; its spending includes all of its subcategories."""
+
+    subcategories: list[SubcategorySpending]
