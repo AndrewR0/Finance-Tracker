@@ -135,17 +135,6 @@ def roll_up(totals: dict[int | None, int], parent_of: dict[int, int | None]) -> 
     roll_up({1: 500, 5: 300, 6: 200, None: 40}, {1: None, 5: 1, 6: 1})
         -> {1: 1000, None: 40}
     """
-    # TODO(human): combine the flat totals into one total per top-level category.
-    #   For each (category_id, cents) in totals:
-    #     - which top-level category does it belong to? A subcategory -> its parent.
-    #       A top-level category -> itself. None (uncategorized) -> None.
-    #     - add cents to that top-level category's running total.
-    #   Edge cases (each has a test):
-    #     - Food has direct transactions AND subcategory transactions: both count.
-    #     - Only a subcategory has spending: the parent still appears in the result.
-    #     - None isn't a key in parent_of. Looking it up there would fail.
-    #   Hint: a plain dict with result[key] = result.get(key, 0) + cents works.
-    #     (collections.defaultdict(int) is the shortcut, if you want to look it up.)
     result = {}
     for category_id, cents in totals.items():
         parent = parent_of.get(category_id)
