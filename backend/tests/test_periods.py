@@ -2,8 +2,6 @@ from datetime import date
 
 import pytest
 
-from app.clock import get_today
-from app.main import app
 from app.periods import Period, PeriodKind, one_period_back, resolve_period
 
 MONTH, YEAR, ALL = PeriodKind.MONTH, PeriodKind.YEAR, PeriodKind.ALL
@@ -77,13 +75,6 @@ def test_future_period_is_rejected():
 
 
 # ======================= the endpoint =======================
-
-@pytest.fixture
-def today(client):
-    """Freeze "today" at Oct 23, 2026 for these tests."""
-    app.dependency_overrides[get_today] = lambda: date(2026, 10, 23)
-    return date(2026, 10, 23)
-
 
 def get_period(client, **params):
     return client.get("/api/dashboard/period", params=params)

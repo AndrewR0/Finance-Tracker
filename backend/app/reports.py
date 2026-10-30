@@ -4,13 +4,16 @@ The rules for what counts as income or spending live in income_cents() and
 spending_cents(), so every report (summary, cash flow, by category) agrees.
 """
 
+import calendar
 import datetime as dt
+from itertools import accumulate
 
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from app.balances import get_balances
 from app.models import Category, CategoryKind, Transaction
+from app.periods import Period, PeriodKind, bounds
 
 
 def income_cents():
@@ -186,6 +189,91 @@ def spending_by_category(
     rows.append(uncategorized)
 
     return sorted((r for r in rows if has_spending(r)), key=lambda r: (-r["spending_cents"], r["name"]))
+
+
+# strftime format for one bucket: a day for a Month view, a month for a Year view.
+BUCKET_FORMAT = {PeriodKind.MONTH: "%Y-%m-%d", PeriodKind.YEAR: "%Y-%m"}
+
+
+def bucket_keys(kind: PeriodKind, start: dt.date, end: dt.date) -> list[str]:
+    """Every bucket from start to end, in order, formatted like BUCKET_FORMAT.
+
+    MONTH, Oct 1 to Oct 3 -> ["2026-10-01", "2026-10-02", "2026-10-03"]
+    YEAR,  Jan 1 to Mar 9 -> ["2026-01", "2026-02", "2026-03"]
+    """
+    if kind == PeriodKind.MONTH:
+        return [(start + dt.timedelta(days=i)).isoformat() for i in range((end - start).days + 1)]
+    return [f"{start.year}-{m:02d}" for m in range(start.month, end.month + 1)]
+
+
+def spending_per_bucket(db: Session, kind: PeriodKind, start: dt.date, end: dt.date) -> dict[str, int]:
+    """{bucket: spending_cents} for buckets that have transactions. Quiet buckets are missing."""
+    bucket = func.strftime(BUCKET_FORMAT[kind], Transaction.date)
+    query = (
+        select(bucket, func.sum(spending_cents()))
+        .select_from(Transaction)
+        .outerjoin(Category, Transaction.category_id == Category.id)
+        .where(
+            Transaction.transfer_id.is_(None),
+            Transaction.date >= start,
+            Transaction.date <= end,
+        )
+        .group_by(bucket)
+    )
+    return {key: total for key, total in db.execute(query)}
+
+
+def running_totals(per_bucket: dict[str, int], keys: list[str]) -> list[int]:
+    """Spending so far at the end of each bucket in keys: one number per key, same order.
+
+    per_bucket: {bucket: cents spent IN that bucket}; buckets with no spending are missing.
+    keys:       every bucket, in order (from bucket_keys).
+    """
+    return list(accumulate(per_bucket.get(key, 0) for key in keys))
+
+def spending_pace(db: Session, period: Period) -> dict:
+    """This period's running spending vs the whole previous period, for the pace chart.
+
+    period must be MONTH or YEAR (ALL has nothing to compare with).
+    """
+    kind = period.kind
+    _, last = bounds(kind, period.start)
+    previous_start, previous_last = bounds(kind, period.compare_start)
+
+    now = running_totals(spending_per_bucket(db, kind, period.start, period.end),
+                         bucket_keys(kind, period.start, period.end))
+    # The previous line is drawn in full, even past "the same point", so you can see where it ended up.
+    before = running_totals(spending_per_bucket(db, kind, previous_start, previous_last),
+                            bucket_keys(kind, previous_start, previous_last))
+
+    # One x-axis point per day (or month). Oct has 31 days and Sep 30, so pad the shorter line with None.
+    length = max(len(bucket_keys(kind, period.start, last)), len(before))
+    points = [
+        {
+            "label": str(i + 1) if kind == PeriodKind.MONTH else calendar.month_abbr[i + 1],
+            "current_cents": now[i] if i < len(now) else None,  # None = hasn't happened yet
+            "previous_cents": before[i] if i < len(before) else None,
+        }
+        for i in range(length)
+    ]
+
+    spent = now[-1]
+    # "On pace for": if every remaining day looks like the average day so far.
+    elapsed_days = (period.end - period.start).days + 1
+    total_days = (last - period.start).days + 1
+    return {
+        "kind": kind,
+        "start": period.start,
+        "end": period.end,
+        "compare_start": period.compare_start,
+        "compare_end": period.compare_end,
+        "spent_cents": spent,
+        # Exactly the compare range, so it matches /summary for the same dates.
+        "previous_same_point_cents": income_and_spending(db, period.compare_start, period.compare_end)[1],
+        "previous_total_cents": before[-1],
+        "projected_cents": round(spent * total_days / elapsed_days),
+        "points": points,
+    }
 
 
 def net_worth(db: Session, as_of: dt.date) -> int:

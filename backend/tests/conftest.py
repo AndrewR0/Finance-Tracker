@@ -4,12 +4,15 @@ Every test gets a brand-new, empty, in-memory database, so tests never touch
 finance.db or each other.
 """
 
+from datetime import date
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.clock import get_today
 from app.db import Base, enable_sqlite_foreign_keys, get_db
 from app.main import app
 
@@ -49,3 +52,10 @@ def client(session_factory):
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def today(client):
+    """Freeze "today" at Oct 23, 2026 for endpoints that use the Today dependency."""
+    app.dependency_overrides[get_today] = lambda: date(2026, 10, 23)
+    return date(2026, 10, 23)

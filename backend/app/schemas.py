@@ -167,6 +167,25 @@ class PeriodRead(BaseModel):
     next_date: dt.date | None  # for the › button; None if the next period hasn't started
 
 
+class PacePoint(BaseModel):
+    label: str  # "1".."31" (day of the month) or "Jan".."Dec"
+    current_cents: int | None  # spending so far; None for days that haven't happened yet
+    previous_cents: int | None  # None past the end of a shorter previous period
+
+
+class SpendingPace(BaseModel):
+    kind: PeriodKind
+    start: dt.date
+    end: dt.date
+    compare_start: dt.date
+    compare_end: dt.date
+    spent_cents: int  # this period so far
+    previous_same_point_cents: int  # previous period, up to the same point
+    previous_total_cents: int  # the whole previous period
+    projected_cents: int  # where this period ends up at the current daily average
+    points: list[PacePoint]
+
+
 class SubcategorySpending(BaseModel):
     category_id: int | None  # None = Uncategorized
     name: str

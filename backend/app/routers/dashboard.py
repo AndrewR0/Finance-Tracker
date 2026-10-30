@@ -10,9 +10,9 @@ from sqlalchemy.orm import Session
 from app.clock import Today
 from app.db import get_db
 from app.models import Transaction
-from app.periods import PeriodKind, bounds, resolve_period
-from app.reports import cash_flow, income_and_spending, net_worth, spending_by_category
-from app.schemas import CashFlowMonth, CategorySpending, DashboardSummary, PeriodRead
+from app.periods import Period, PeriodKind, bounds, resolve_period
+from app.reports import cash_flow, income_and_spending, net_worth, spending_by_category, spending_pace
+from app.schemas import CashFlowMonth, CategorySpending, DashboardSummary, PeriodRead, SpendingPace
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -30,11 +30,7 @@ def period(db: DbSession, today: Today, kind: PeriodKind, date: dt.date | None =
         p = resolve_period(kind, today, today, first_day)
         return PeriodRead(**vars(p), previous_date=None, next_date=None)
 
-    try:
-        p = resolve_period(kind, date or today, today)
-    except ValueError as error:
-        raise HTTPException(status_code=422, detail=str(error)) from error
-
+    p = resolve_or_422(kind, date or today, today)
     _, last = bounds(kind, p.start)
     day_after = last + dt.timedelta(days=1)
     return PeriodRead(
@@ -42,6 +38,22 @@ def period(db: DbSession, today: Today, kind: PeriodKind, date: dt.date | None =
         previous_date=p.compare_start,  # the previous period starts where the compare range starts
         next_date=day_after if day_after <= today else None,
     )
+
+
+@router.get("/spending-pace", response_model=SpendingPace)
+def spending_pace_report(db: DbSession, today: Today, kind: PeriodKind, date: dt.date | None = None):
+    """Running spending this period vs last: ?kind=month or ?kind=year (date defaults to today)."""
+    if kind == PeriodKind.ALL:
+        raise HTTPException(status_code=422, detail="All time has no earlier period to compare. Pick month or year.")
+    return spending_pace(db, resolve_or_422(kind, date or today, today))
+
+
+def resolve_or_422(kind: PeriodKind, anchor: dt.date, today: dt.date) -> Period:
+    """resolve_period, but a bad period becomes a 422 response instead of a crash."""
+    try:
+        return resolve_period(kind, anchor, today)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @router.get("/summary", response_model=DashboardSummary)
