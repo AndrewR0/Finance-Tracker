@@ -22,6 +22,14 @@ class AccountCreate(BaseModel):
     type: AccountType
 
 
+class AccountUpdate(BaseModel):
+    """PATCH body. Only the name can change: the type and history stay as they are."""
+
+    model_config = ConfigDict(extra="forbid")  # a typo like {"nmae": ...} fails loudly
+
+    name: Name
+
+
 class AccountRead(BaseModel):
     # Lets Pydantic read attributes off a SQLAlchemy object (account.name, ...).
     model_config = ConfigDict(from_attributes=True)

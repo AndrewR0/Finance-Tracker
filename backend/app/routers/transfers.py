@@ -58,6 +58,12 @@ def get_transfer(db: Session, transfer_id: int) -> Transfer:
     return transfer
 
 
+@router.get("/{transfer_id}", response_model=TransferRead)
+def read_transfer(transfer_id: int, db: DbSession):
+    """Both legs of one transfer (the edit panel needs the from and to accounts)."""
+    return get_transfer(db, transfer_id)
+
+
 @router.patch("/{transfer_id}", response_model=TransferRead)
 def update_transfer(transfer_id: int, payload: TransferUpdate, db: DbSession):
     transfer = get_transfer(db, transfer_id)

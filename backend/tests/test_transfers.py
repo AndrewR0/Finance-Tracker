@@ -137,3 +137,18 @@ def test_rejected_transfer_saves_nothing(client, checking):
     transfer(client, checking["id"], 999)
 
     assert client.get("/api/transactions").json() == []
+
+
+# ---- reading one ----
+
+def test_read_one_transfer(client, checking, visa):
+    created = transfer(client, checking["id"], visa["id"]).json()
+
+    response = client.get(f"/api/transfers/{created['id']}")
+
+    assert response.status_code == 200
+    assert response.json() == created
+
+
+def test_read_missing_transfer_is_404(client):
+    assert client.get("/api/transfers/999").status_code == 404

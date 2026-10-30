@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.balances import get_balances
 from app.db import get_db
 from app.models import Account
-from app.schemas import AccountCreate, AccountRead, AccountWithBalance
+from app.schemas import AccountCreate, AccountRead, AccountUpdate, AccountWithBalance
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 
@@ -40,6 +40,24 @@ def create_account(payload: AccountCreate, db: DbSession):
     account = Account(name=payload.name, type=payload.type)
     db.add(account)
     try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=f"An open account named '{payload.name}' already exists.")
+    return account
+
+
+@router.patch("/{account_id}", response_model=AccountRead)
+def rename_account(account_id: int, payload: AccountUpdate, db: DbSession):
+    """Rename an account. Transactions point at the account by id, so they follow automatically."""
+    account = db.get(Account, account_id)
+    if account is None:
+        raise HTTPException(status_code=404, detail=f"Account {account_id} does not exist.")
+
+    account.name = payload.name
+    try:
+        # The partial unique index (open accounts only) decides what's a duplicate. Asking the
+        # database, instead of checking first in Python, can't be fooled by two requests at once.
         db.commit()
     except IntegrityError:
         db.rollback()
