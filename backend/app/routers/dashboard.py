@@ -4,15 +4,44 @@ import datetime as dt
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.clock import Today
 from app.db import get_db
+from app.models import Transaction
+from app.periods import PeriodKind, bounds, resolve_period
 from app.reports import cash_flow, income_and_spending, net_worth, spending_by_category
-from app.schemas import CashFlowMonth, CategorySpending, DashboardSummary
+from app.schemas import CashFlowMonth, CategorySpending, DashboardSummary, PeriodRead
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 DbSession = Annotated[Session, Depends(get_db)]
+
+
+@router.get("/period", response_model=PeriodRead)
+def period(db: DbSession, today: Today, kind: PeriodKind, date: dt.date | None = None):
+    """Date ranges for ?kind=month&date=2026-10-23 (date defaults to today).
+
+    The ‹ and › buttons send previous_date / next_date back as ?date=.
+    """
+    if kind == PeriodKind.ALL:
+        first_day = db.scalar(select(func.min(Transaction.date)))
+        p = resolve_period(kind, today, today, first_day)
+        return PeriodRead(**vars(p), previous_date=None, next_date=None)
+
+    try:
+        p = resolve_period(kind, date or today, today)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+    _, last = bounds(kind, p.start)
+    day_after = last + dt.timedelta(days=1)
+    return PeriodRead(
+        **vars(p),
+        previous_date=p.compare_start,  # the previous period starts where the compare range starts
+        next_date=day_after if day_after <= today else None,
+    )
 
 
 @router.get("/summary", response_model=DashboardSummary)

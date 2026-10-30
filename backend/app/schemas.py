@@ -11,6 +11,7 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StringConstraints
 
 from app.models import AccountType, CategoryKind
+from app.periods import PeriodKind
 
 # Trims surrounding spaces, then requires 1-100 characters.
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
@@ -152,6 +153,18 @@ class CashFlowMonth(BaseModel):
     income_cents: int
     spending_cents: int
     saved_cents: int
+
+
+class PeriodRead(BaseModel):
+    """The date ranges for one Month / Year / All view. Pass them to the other dashboard endpoints."""
+
+    kind: PeriodKind
+    start: dt.date
+    end: dt.date  # never after today
+    compare_start: dt.date | None  # None for "all"
+    compare_end: dt.date | None
+    previous_date: dt.date | None  # use as ?date= for the ‹ button; None for "all"
+    next_date: dt.date | None  # for the › button; None if the next period hasn't started
 
 
 class SubcategorySpending(BaseModel):
