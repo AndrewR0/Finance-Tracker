@@ -102,6 +102,73 @@ def test_blank_name_is_422(client):
 def test_unknown_fields_are_422(client):
     checking = create(client, "Checking")
 
-    response = client.patch(f"/api/accounts/{checking}", json={"name": "Everyday", "type": "savings"})
+    response = client.patch(f"/api/accounts/{checking}", json={"balance_cents": 100})
 
-    assert response.status_code == 422  # the type can't be changed here
+    assert response.status_code == 422  # balances come from transactions, never set directly
+
+
+# ---- changing the type ----
+
+def change(client, account_id, **fields):
+    return client.patch(f"/api/accounts/{account_id}", json=fields)
+
+
+def test_change_only_the_type(client):
+    card = create(client, "Store card", "checking")  # created with the wrong type
+
+    response = change(client, card, type="credit_card")
+
+    assert response.status_code == 200
+    assert (response.json()["name"], response.json()["type"]) == ("Store card", "credit_card")
+
+
+def test_change_name_and_type_together(client):
+    account = create(client, "Checking")
+
+    body = change(client, account, name="Emergency fund", type="savings").json()
+
+    assert (body["name"], body["type"]) == ("Emergency fund", "savings")
+
+
+def test_type_change_keeps_balance_and_transactions(client):
+    account = create(client, "Checking")
+    client.post("/api/transactions", json={"account_id": account, "date": "2026-10-01", "amount_cents": -2500})
+
+    change(client, account, type="credit_card")
+
+    [listed] = client.get("/api/accounts").json()
+    assert (listed["type"], listed["balance_cents"]) == ("credit_card", -2500)
+    assert len(client.get("/api/transactions", params={"account_id": account}).json()) == 1
+
+
+def test_unknown_type_is_422(client):
+    account = create(client, "Checking")
+
+    assert change(client, account, type="piggy_bank").status_code == 422
+
+
+def test_null_type_or_name_is_422(client):
+    account = create(client, "Checking")
+
+    assert change(client, account, type=None).status_code == 422
+    assert change(client, account, name=None).status_code == 422
+
+
+def test_empty_body_changes_nothing(client):
+    account = create(client, "Checking")
+
+    body = change(client, account).json()
+
+    assert (body["name"], body["type"]) == ("Checking", "checking")
+
+
+def test_failed_rename_does_not_change_the_type_either(client):
+    create(client, "Checking")
+    savings = create(client, "Savings", "savings")
+
+    response = change(client, savings, name="Checking", type="cash")
+
+    assert response.status_code == 409
+    # All or nothing: the rollback undid the type change too.
+    listed = {a["name"]: a["type"] for a in client.get("/api/accounts").json()}
+    assert listed == {"Checking": "checking", "Savings": "savings"}

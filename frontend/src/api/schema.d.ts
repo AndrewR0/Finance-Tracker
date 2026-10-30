@@ -39,10 +39,11 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Rename Account
-         * @description Rename an account. Transactions point at the account by id, so they follow automatically.
+         * Update Account
+         * @description Change an account's name and/or type. Transactions point at the account by id,
+         *     so they follow automatically, and balances don't change: they're sums of transactions.
          */
-        patch: operations["rename_account_api_accounts__account_id__patch"];
+        patch: operations["update_account_api_accounts__account_id__patch"];
         trace?: never;
     };
     "/api/categories": {
@@ -298,11 +299,15 @@ export interface components {
         AccountType: "checking" | "savings" | "credit_card" | "brokerage" | "cash";
         /**
          * AccountUpdate
-         * @description PATCH body. Only the name can change: the type and history stay as they are.
+         * @description PATCH body: send the fields you want to change (name, type, or both).
+         *
+         *     Same rules as TransactionUpdate: a field can be left out, but not sent as null,
+         *     because an account always has a name and a type.
          */
         AccountUpdate: {
             /** Name */
-            name: string;
+            name?: string;
+            type?: components["schemas"]["AccountType"];
         };
         /** AccountWithBalance */
         AccountWithBalance: {
@@ -722,7 +727,7 @@ export interface operations {
             };
         };
     };
-    rename_account_api_accounts__account_id__patch: {
+    update_account_api_accounts__account_id__patch: {
         parameters: {
             query?: never;
             header?: never;

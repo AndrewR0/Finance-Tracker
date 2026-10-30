@@ -48,13 +48,15 @@ def create_account(payload: AccountCreate, db: DbSession):
 
 
 @router.patch("/{account_id}", response_model=AccountRead)
-def rename_account(account_id: int, payload: AccountUpdate, db: DbSession):
-    """Rename an account. Transactions point at the account by id, so they follow automatically."""
+def update_account(account_id: int, payload: AccountUpdate, db: DbSession):
+    """Change an account's name and/or type. Transactions point at the account by id,
+    so they follow automatically, and balances don't change: they're sums of transactions."""
     account = db.get(Account, account_id)
     if account is None:
         raise HTTPException(status_code=404, detail=f"Account {account_id} does not exist.")
 
-    account.name = payload.name
+    for field, value in payload.model_dump(exclude_unset=True).items():  # only what was sent
+        setattr(account, field, value)
     try:
         # The partial unique index (open accounts only) decides what's a duplicate. Asking the
         # database, instead of checking first in Python, can't be fooled by two requests at once.

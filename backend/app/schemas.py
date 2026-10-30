@@ -23,11 +23,16 @@ class AccountCreate(BaseModel):
 
 
 class AccountUpdate(BaseModel):
-    """PATCH body. Only the name can change: the type and history stay as they are."""
+    """PATCH body: send the fields you want to change (name, type, or both).
+
+    Same rules as TransactionUpdate: a field can be left out, but not sent as null,
+    because an account always has a name and a type.
+    """
 
     model_config = ConfigDict(extra="forbid")  # a typo like {"nmae": ...} fails loudly
 
-    name: Name
+    name: Name = None
+    type: AccountType = None
 
 
 class AccountRead(BaseModel):

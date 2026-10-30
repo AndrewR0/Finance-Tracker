@@ -103,29 +103,38 @@ export function Accounts() {
   );
 }
 
-/** One account. Click ✎ to rename it in place: Enter saves, Esc cancels. */
+type AccountChanges = { name?: string; type?: AccountType };
+
+/** One account. Click ✎ to edit its name and type in place: Enter saves, Esc cancels. */
 function AccountRow({ account }: { account: Account }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(account.name);
-  const save = useSave((newName: string) => api.updateAccount(account.id, { name: newName }));
+  const [type, setType] = useState<AccountType>(account.type);
+  const save = useSave((changes: AccountChanges) => api.updateAccount(account.id, changes));
+  const formId = `account-${account.id}`; // the type <select> sits in another cell and joins the form by id
 
   function startEditing() {
     setName(account.name);
+    setType(account.type);
     save.reset(); // forget an error from a previous attempt
     setEditing(true);
   }
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
-    if (name.trim() === account.name) return setEditing(false); // nothing changed: skip the request
-    save.mutate(name, { onSuccess: () => setEditing(false) });
+    // Send only what changed, the way PATCH is meant to be used.
+    const changes: AccountChanges = {};
+    if (name.trim() !== account.name) changes.name = name;
+    if (type !== account.type) changes.type = type;
+    if (Object.keys(changes).length === 0) return setEditing(false); // nothing changed: skip the request
+    save.mutate(changes, { onSuccess: () => setEditing(false) });
   }
 
   return (
     <tr className="acct" style={account.closed_at ? { opacity: 0.55 } : undefined}>
       <td>
         {editing ? (
-          <form className="rename" onSubmit={onSubmit}>
+          <form id={formId} className="rename" onSubmit={onSubmit}>
             <input
               className="input"
               autoFocus
@@ -147,13 +156,30 @@ function AccountRow({ account }: { account: Account }) {
         ) : (
           <>
             {account.name}
-            <button className="icon-btn" title={`Rename ${account.name}`} aria-label={`Rename ${account.name}`} onClick={startEditing}>
+            <button className="icon-btn" title={`Edit ${account.name}`} aria-label={`Edit ${account.name}`} onClick={startEditing}>
               ✎
             </button>
           </>
         )}
       </td>
-      <td className="muted">{TYPE_LABELS[account.type]}</td>
+      <td className="muted">
+        {editing ? (
+          <select
+            form={formId}
+            className="select"
+            aria-label="Account type"
+            value={type}
+            onChange={(e) => setType(e.target.value as AccountType)}
+            onKeyDown={(e) => e.key === "Escape" && setEditing(false)}
+          >
+            {Object.entries(TYPE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        ) : (
+          TYPE_LABELS[account.type]
+        )}
+      </td>
       <td className={`r num ${account.balance_cents < 0 ? "down" : ""}`}>{formatMoney(account.balance_cents)}</td>
     </tr>
   );
