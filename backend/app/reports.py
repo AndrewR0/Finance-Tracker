@@ -276,6 +276,18 @@ def spending_pace(db: Session, period: Period) -> dict:
     }
 
 
+def percent_change(now: int, before: int) -> float | None:
+    """How much now differs from before, as a percent of before, rounded to 1 decimal place."""
+    if before == 0:
+        return None
+    return round((now - before) / abs(before) * 100, 1)
+
+
+def change(now: int, before: int) -> dict:
+    """One "vs previous period" badge: previous value, difference, and percent."""
+    return {"previous_cents": before, "change_cents": now - before, "change_percent": percent_change(now, before)}
+
+
 def net_worth(db: Session, as_of: dt.date) -> int:
     """Everything you have minus everything you owe, at the end of as_of."""
     return sum(get_balances(db, as_of).values())

@@ -40,7 +40,9 @@ def test_empty_month_is_all_zeros(client, setup):
 
     assert body | {"start": None, "end": None} == {
         "start": None, "end": None,
-        "net_worth_cents": 0, "income_cents": 0, "spending_cents": 0, "saved_cents": 0,
+        "net_worth_cents": 0, "net_worth_change_cents": 0,
+        "income_cents": 0, "spending_cents": 0, "saved_cents": 0,
+        "income_change": None, "spending_change": None, "saved_change": None,
     }
 
 

@@ -1,6 +1,7 @@
 """Dashboard endpoints: /api/dashboard"""
 
 import datetime as dt
+from dataclasses import dataclass
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -11,7 +12,14 @@ from app.clock import Today
 from app.db import get_db
 from app.models import Transaction
 from app.periods import Period, PeriodKind, bounds, resolve_period
-from app.reports import cash_flow, income_and_spending, net_worth, spending_by_category, spending_pace
+from app.reports import (
+    cash_flow,
+    change,
+    income_and_spending,
+    net_worth,
+    spending_by_category,
+    spending_pace,
+)
 from app.schemas import CashFlowMonth, CategorySpending, DashboardSummary, PeriodRead, SpendingPace
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -56,20 +64,65 @@ def resolve_or_422(kind: PeriodKind, anchor: dt.date, today: dt.date) -> Period:
         raise HTTPException(status_code=422, detail=str(error)) from error
 
 
-@router.get("/summary", response_model=DashboardSummary)
-def summary(db: DbSession, start: dt.date, end: dt.date):
-    """The four top cards: ?start=2026-10-01&end=2026-10-31 (inclusive)."""
+@dataclass(frozen=True)
+class Ranges:
+    start: dt.date
+    end: dt.date
+    compare: tuple[dt.date, dt.date] | None
+
+
+def date_ranges(
+    start: dt.date,
+    end: dt.date,
+    compare_start: dt.date | None = None,
+    compare_end: dt.date | None = None,
+) -> Ranges:
+    """Shared query parameters: ?start&end, plus an optional compare_start&compare_end.
+
+    Endpoints ask for `ranges: DateRanges`. FastAPI reads these four parameters from the URL,
+    runs the checks below, and hands the endpoint a Ranges, or answers 422 before it runs.
+    """
     if start > end:
         raise HTTPException(status_code=422, detail="start must be on or before end.")
+    if (compare_start is None) != (compare_end is None):
+        raise HTTPException(status_code=422, detail="Give both compare_start and compare_end, or neither.")
+    if compare_start is not None and compare_start > compare_end:
+        raise HTTPException(status_code=422, detail="compare_start must be on or before compare_end.")
+    compare = (compare_start, compare_end) if compare_start is not None else None
+    return Ranges(start, end, compare)
 
-    income, spending = income_and_spending(db, start, end)
+
+DateRanges = Annotated[Ranges, Depends(date_ranges)]
+
+
+@router.get("/summary", response_model=DashboardSummary)
+def summary(db: DbSession, ranges: DateRanges):
+    """The four top cards: ?start=2026-10-01&end=2026-10-31 (inclusive).
+
+    Add compare_start and compare_end to fill in the *_change fields.
+    """
+    income, spending = income_and_spending(db, ranges.start, ranges.end)
+    worth = net_worth(db, as_of=ranges.end)
+    worth_before = net_worth(db, as_of=ranges.start - dt.timedelta(days=1))
+
+    changes = {"income_change": None, "spending_change": None, "saved_change": None}
+    if ranges.compare:
+        income_then, spending_then = income_and_spending(db, *ranges.compare)
+        changes = {
+            "income_change": change(income, income_then),
+            "spending_change": change(spending, spending_then),
+            "saved_change": change(income - spending, income_then - spending_then),
+        }
+
     return DashboardSummary(
-        start=start,
-        end=end,
-        net_worth_cents=net_worth(db, as_of=end),
+        start=ranges.start,
+        end=ranges.end,
+        net_worth_cents=worth,
+        net_worth_change_cents=worth - worth_before,
         income_cents=income,
         spending_cents=spending,
         saved_cents=income - spending,
+        **changes,
     )
 
 
@@ -84,20 +137,6 @@ def cash_flow_by_month(
 
 
 @router.get("/spending-by-category", response_model=list[CategorySpending])
-def spending_by_category_report(
-    db: DbSession,
-    start: dt.date,
-    end: dt.date,
-    compare_start: dt.date | None = None,
-    compare_end: dt.date | None = None,
-):
+def spending_by_category_report(db: DbSession, ranges: DateRanges):
     """Spending per category, biggest first. Add compare_start and compare_end to get previous_cents."""
-    if start > end:
-        raise HTTPException(status_code=422, detail="start must be on or before end.")
-    if (compare_start is None) != (compare_end is None):
-        raise HTTPException(status_code=422, detail="Give both compare_start and compare_end, or neither.")
-    if compare_start is not None and compare_start > compare_end:
-        raise HTTPException(status_code=422, detail="compare_start must be on or before compare_end.")
-
-    compare = (compare_start, compare_end) if compare_start is not None else None
-    return spending_by_category(db, start, end, compare)
+    return spending_by_category(db, ranges.start, ranges.end, ranges.compare)

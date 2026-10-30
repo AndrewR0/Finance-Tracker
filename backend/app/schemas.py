@@ -139,13 +139,26 @@ class TransferRead(BaseModel):
     to_leg: TransactionRead
 
 
+class Change(BaseModel):
+    """This period vs the compare period, for one number."""
+
+    previous_cents: int
+    change_cents: int  # now - previous
+    change_percent: float | None  # None when previous is 0 (nothing to compare with)
+
+
 class DashboardSummary(BaseModel):
     start: dt.date
     end: dt.date
     net_worth_cents: int  # all account balances at the end of `end`
+    net_worth_change_cents: int  # since the end of the day before `start`
     income_cents: int
     spending_cents: int  # positive number; refunds reduce it
     saved_cents: int  # income - spending; negative if you spent more than you earned
+    # These three are None unless compare_start and compare_end were given.
+    income_change: Change | None
+    spending_change: Change | None
+    saved_change: Change | None
 
 
 class CashFlowMonth(BaseModel):
