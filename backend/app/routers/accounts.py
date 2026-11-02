@@ -9,9 +9,17 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.balances import get_balances
+from app.clock import Today
 from app.db import get_db
-from app.models import Account
-from app.schemas import AccountCreate, AccountRead, AccountUpdate, AccountWithBalance
+from app.models import Account, Transaction
+from app.schemas import (
+    AccountCreate,
+    AccountRead,
+    AccountUpdate,
+    AccountWithBalance,
+    ReconcileRequest,
+    ReconcileResult,
+)
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 
@@ -64,4 +72,83 @@ def update_account(account_id: int, payload: AccountUpdate, db: DbSession):
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=409, detail=f"An open account named '{payload.name}' already exists.")
+    return account
+
+
+def dollars(cents: int) -> str:
+    """-25000 -> "-$250.00", for error messages. Integer math, so no float rounding."""
+    sign = "-" if cents < 0 else ""
+    return f"{sign}${abs(cents) // 100:,}.{abs(cents) % 100:02d}"
+
+
+def get_account(db: Session, account_id: int) -> Account:
+    account = db.get(Account, account_id)
+    if account is None:
+        raise HTTPException(status_code=404, detail=f"Account {account_id} does not exist.")
+    return account
+
+
+@router.post("/{account_id}/reconcile", response_model=ReconcileResult)
+def reconcile_account(account_id: int, payload: ReconcileRequest, db: DbSession):
+    """Make the balance at the end of `date` match a statement, by adding an adjustment entry.
+
+    History is never rewritten: the difference becomes one new transaction on that date,
+    marked is_adjustment so it doesn't count as income or spending.
+    """
+    account = get_account(db, account_id)
+    if account.closed_at is not None:
+        raise HTTPException(status_code=409, detail=f"{account.name} is closed. Reopen it to reconcile.")
+
+    previous = get_balances(db, payload.date).get(account.id, 0)
+    difference = payload.balance_cents - previous
+    if difference == 0:
+        return ReconcileResult(previous_balance_cents=previous, balance_cents=previous, adjustment=None)
+
+    adjustment = Transaction(
+        account_id=account.id,
+        date=payload.date,
+        amount_cents=difference,
+        notes="Balance adjustment",
+        is_adjustment=True,
+    )
+    db.add(adjustment)
+    db.commit()
+    return ReconcileResult(previous_balance_cents=previous, balance_cents=payload.balance_cents, adjustment=adjustment)
+
+
+@router.post("/{account_id}/close", response_model=AccountRead)
+def close_account(account_id: int, db: DbSession, today: Today):
+    """Close an account you no longer use. Its history stays, and it still counts in past reports.
+
+    The balance must be zero first: a closed account with money in it would quietly keep
+    counting toward net worth while being hidden from the lists.
+    """
+    account = get_account(db, account_id)
+    if account.closed_at is not None:
+        return account  # already closed: closing again changes nothing
+    balance = get_balances(db).get(account.id, 0)
+    if balance != 0:
+        raise HTTPException(
+            status_code=409,
+            detail=f"{account.name} still has a balance of {dollars(balance)}. "
+                   "Move the money out with a transfer, or reconcile it to 0, before closing.",
+        )
+    account.closed_at = dt.datetime.combine(today, dt.time())
+    db.commit()
+    return account
+
+
+@router.post("/{account_id}/reopen", response_model=AccountRead)
+def reopen_account(account_id: int, db: DbSession):
+    account = get_account(db, account_id)
+    account.closed_at = None
+    try:
+        db.commit()
+    except IntegrityError:
+        # The partial unique index: an open account already uses this name.
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail=f"An open account named '{account.name}' already exists. Rename one of them first.",
+        )
     return account

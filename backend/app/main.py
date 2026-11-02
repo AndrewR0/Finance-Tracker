@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 
 from app.frontend import mount_frontend
-from app.routers import accounts, categories, dashboard, transactions, transfers
+from app.routers import accounts, categories, dashboard, imports, transactions, transfers
 
 app = FastAPI(title="Finance Tracker")
 app.include_router(accounts.router)
@@ -11,6 +11,7 @@ app.include_router(categories.router)
 app.include_router(transactions.router)
 app.include_router(transfers.router)
 app.include_router(dashboard.router)
+app.include_router(imports.router)
 
 
 @app.get("/api/health")

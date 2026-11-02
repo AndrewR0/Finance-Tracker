@@ -2,7 +2,8 @@ import { useState, type FormEvent } from "react";
 
 import { api, type Account, type AccountType } from "../api/client";
 import { useAccounts, useSave } from "../api/hooks";
-import { formatMoney, formatMoney0 } from "../lib/money";
+import { todayISO } from "../lib/dates";
+import { formatMoney, formatMoney0, parseMoney } from "../lib/money";
 
 const TYPE_LABELS: Record<AccountType, string> = {
   checking: "Checking",
@@ -72,22 +73,23 @@ export function Accounts() {
               {/* Fixed widths, so the columns don't jump when a row switches to rename mode. */}
               <th style={{ width: 180 }}>Type</th>
               <th className="r" style={{ width: 160 }}>Balance</th>
+              <th style={{ width: 190 }} />
             </tr>
           </thead>
           <tbody>
             {accounts === undefined && (
               <tr className="empty-row">
-                <td colSpan={3}>Loading…</td>
+                <td colSpan={4}>Loading…</td>
               </tr>
             )}
             {accounts?.length === 0 && (
               <tr className="empty-row">
-                <td colSpan={3}>No accounts yet. Add your checking account to get started.</td>
+                <td colSpan={4}>No accounts yet. Add your checking account to get started.</td>
               </tr>
             )}
             {groups.map((group) => [
               <tr key={group.title} className="dayhead">
-                <td colSpan={3}>
+                <td colSpan={4}>
                   {group.title} · {formatMoney0(total(group.accounts))}
                 </td>
               </tr>,
@@ -97,7 +99,8 @@ export function Accounts() {
         </table>
       </div>
       <p className="muted" style={{ fontSize: 12.5, marginTop: 12 }}>
-        Reconciling (matching a statement with an adjustment entry) and closing accounts are coming next on the backend.
+        Reconcile: enter the balance from a statement, and the difference is saved as a balance adjustment. It
+        changes the balance but doesn't count as income or spending. An account can be closed once its balance is $0.
       </p>
     </div>
   );
@@ -110,8 +113,13 @@ function AccountRow({ account }: { account: Account }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(account.name);
   const [type, setType] = useState<AccountType>(account.type);
+  const [reconciling, setReconciling] = useState(false);
   const save = useSave((changes: AccountChanges) => api.updateAccount(account.id, changes));
+  const close = useSave(() => api.closeAccount(account.id));
+  const reopen = useSave(() => api.reopenAccount(account.id));
   const formId = `account-${account.id}`; // the type <select> sits in another cell and joins the form by id
+  const isClosed = account.closed_at !== null;
+  const actionError = close.error?.message ?? reopen.error?.message;
 
   function startEditing() {
     setName(account.name);
@@ -131,56 +139,147 @@ function AccountRow({ account }: { account: Account }) {
   }
 
   return (
-    <tr className="acct" style={account.closed_at ? { opacity: 0.55 } : undefined}>
-      <td>
-        {editing ? (
-          <form id={formId} className="rename" onSubmit={onSubmit}>
-            <input
-              className="input"
-              autoFocus
-              required
-              maxLength={100}
-              aria-label="Account name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+    <>
+      <tr className="acct" style={isClosed ? { opacity: 0.55 } : undefined}>
+        <td>
+          {editing ? (
+            <form id={formId} className="rename" onSubmit={onSubmit}>
+              <input
+                className="input"
+                autoFocus
+                required
+                maxLength={100}
+                aria-label="Account name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => e.key === "Escape" && setEditing(false)}
+              />
+              <button type="submit" className="btn-neon" disabled={save.isPending}>
+                Save
+              </button>
+              <button type="button" className="btn" onClick={() => setEditing(false)}>
+                Cancel
+              </button>
+              {save.error && <div className="form-error">{save.error.message}</div>}
+            </form>
+          ) : (
+            <>
+              {account.name}
+              <button className="icon-btn" title={`Edit ${account.name}`} aria-label={`Edit ${account.name}`} onClick={startEditing}>
+                ✎
+              </button>
+            </>
+          )}
+        </td>
+        <td className="muted">
+          {editing ? (
+            <select
+              form={formId}
+              className="select"
+              aria-label="Account type"
+              value={type}
+              onChange={(e) => setType(e.target.value as AccountType)}
               onKeyDown={(e) => e.key === "Escape" && setEditing(false)}
-            />
-            <button type="submit" className="btn-neon" disabled={save.isPending}>
-              Save
+            >
+              {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          ) : (
+            TYPE_LABELS[account.type]
+          )}
+        </td>
+        <td className={`r num ${account.balance_cents < 0 ? "down" : ""}`}>{formatMoney(account.balance_cents)}</td>
+        <td className="r acct-actions">
+          {isClosed ? (
+            <button className="btn small" disabled={reopen.isPending} onClick={() => reopen.mutate(undefined)}>
+              Reopen
             </button>
-            <button type="button" className="btn" onClick={() => setEditing(false)}>
-              Cancel
-            </button>
-            {save.error && <div className="form-error">{save.error.message}</div>}
-          </form>
-        ) : (
-          <>
-            {account.name}
-            <button className="icon-btn" title={`Edit ${account.name}`} aria-label={`Edit ${account.name}`} onClick={startEditing}>
-              ✎
-            </button>
-          </>
-        )}
+          ) : (
+            <>
+              <button className="btn small" onClick={() => setReconciling((open) => !open)}>
+                Reconcile
+              </button>
+              <button
+                className="btn small"
+                disabled={close.isPending || account.balance_cents !== 0}
+                title={account.balance_cents !== 0 ? "Bring the balance to $0 first (a transfer, or reconcile to 0)" : "Close this account"}
+                onClick={() => close.mutate(undefined)}
+              >
+                Close
+              </button>
+            </>
+          )}
+        </td>
+      </tr>
+      {actionError && (
+        <tr>
+          <td colSpan={4} className="form-error">{actionError}</td>
+        </tr>
+      )}
+      {reconciling && !isClosed && <ReconcileRow account={account} onDone={() => setReconciling(false)} />}
+    </>
+  );
+}
+
+/**
+ * Enter what the statement says; the server adds the difference as an adjustment.
+ * For a credit card you type what you owe as a positive number, the way statements show it.
+ */
+function ReconcileRow({ account, onDone }: { account: Account; onDone: () => void }) {
+  const owes = account.type === "credit_card";
+  const [date, setDate] = useState(todayISO());
+  const [amount, setAmount] = useState("");
+  const [problem, setProblem] = useState<string | null>(null);
+  const [result, setResult] = useState<string | null>(null);
+  const reconcile = useSave((balance_cents: number) => api.reconcileAccount(account.id, { date, balance_cents }));
+
+  function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    const cents = parseMoney(amount);
+    if (cents === null) return setProblem("Enter the statement balance, like 1250.00.");
+    setProblem(null);
+    reconcile.mutate(owes ? -cents : cents, {
+      onSuccess: (r) =>
+        setResult(
+          r.adjustment
+            ? `Added an adjustment of ${formatMoney(r.adjustment.amount_cents, { sign: true })}. ` +
+                `The balance was ${formatMoney(r.previous_balance_cents)}.`
+            : "Already matches. Nothing to change.",
+        ),
+    });
+  }
+
+  return (
+    <tr className="reconcile">
+      <td colSpan={4}>
+        <form className="rename" onSubmit={onSubmit}>
+          <span className="muted">Statement balance at the end of</span>
+          <input className="input" type="date" required value={date} style={{ width: 150 }} onChange={(e) => setDate(e.target.value)} />
+          <input
+            className="input"
+            autoFocus
+            inputMode="decimal"
+            placeholder={owes ? "Amount owed" : "Balance"}
+            aria-label={owes ? "Amount owed" : "Balance"}
+            style={{ width: 140, textAlign: "right" }}
+            value={amount}
+            onChange={(e) => {
+              setAmount(e.target.value);
+              setResult(null);
+            }}
+            onKeyDown={(e) => e.key === "Escape" && onDone()}
+          />
+          <button type="submit" className="btn-neon" disabled={reconcile.isPending}>
+            Reconcile
+          </button>
+          <button type="button" className="btn" onClick={onDone}>
+            Done
+          </button>
+          {result && <span className="muted" style={{ flexBasis: "100%" }}>{result}</span>}
+          {(problem ?? reconcile.error?.message) && <div className="form-error">{problem ?? reconcile.error?.message}</div>}
+        </form>
       </td>
-      <td className="muted">
-        {editing ? (
-          <select
-            form={formId}
-            className="select"
-            aria-label="Account type"
-            value={type}
-            onChange={(e) => setType(e.target.value as AccountType)}
-            onKeyDown={(e) => e.key === "Escape" && setEditing(false)}
-          >
-            {Object.entries(TYPE_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        ) : (
-          TYPE_LABELS[account.type]
-        )}
-      </td>
-      <td className={`r num ${account.balance_cents < 0 ? "down" : ""}`}>{formatMoney(account.balance_cents)}</td>
     </tr>
   );
 }

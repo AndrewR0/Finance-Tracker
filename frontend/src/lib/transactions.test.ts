@@ -18,6 +18,7 @@ function tx(fields: Partial<Transaction>): Transaction {
     notes: null,
     transfer_id: null,
     transfer_description: null,
+    is_adjustment: false,
     created_at: "2026-10-22T12:00:00",
     ...fields,
   };
@@ -92,6 +93,10 @@ describe("moneyInOut", () => {
     ]);
 
     expect(totals).toEqual({ in: 270000, out: 9000 });
+  });
+
+  it("leaves out balance adjustments", () => {
+    expect(moneyInOut([tx({ amount_cents: -500, is_adjustment: true }), tx({ amount_cents: 300 })])).toEqual({ in: 300, out: 0 });
   });
 });
 

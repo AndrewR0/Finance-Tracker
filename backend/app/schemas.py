@@ -51,10 +51,36 @@ class AccountWithBalance(AccountRead):
     balance_cents: int
 
 
+class ReconcileRequest(BaseModel):
+    """What your bank or card statement says the balance was at the end of `date`."""
+
+    date: dt.date
+    # Negative for money owed, like a credit card: owing $250.00 is -25000.
+    balance_cents: StrictInt
+
+
 class CategoryCreate(BaseModel):
     name: Name
     kind: CategoryKind
     parent_id: int | None = None  # leave out for a top-level category
+
+
+class CategoryUpdate(BaseModel):
+    """PATCH body: a new name, and/or a new parent.
+
+    parent_id: an id moves it under that category; null makes it top-level.
+    Leave a field out to keep it. The kind can't change: transactions and
+    transfers were checked against it when they were saved.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: Name = None
+    parent_id: int | None = None
+
+
+class CategoryDeleted(BaseModel):
+    moved_transactions: int  # how many transactions now point at move_to (or are uncategorized)
 
 
 class CategoryRead(BaseModel):
@@ -118,6 +144,7 @@ class TransactionRead(BaseModel):
     notes: str | None
     transfer_id: int | None
     transfer_description: str | None
+    is_adjustment: bool  # a reconcile entry: not income or spending
     created_at: datetime
 
 
@@ -223,3 +250,74 @@ class CategorySpending(SubcategorySpending):
     """A top-level category; its spending includes all of its subcategories."""
 
     subcategories: list[SubcategorySpending]
+
+
+class ReconcileResult(BaseModel):
+    previous_balance_cents: int  # what the app had for that date before reconciling
+    balance_cents: int  # what it has now (the statement balance)
+    adjustment: TransactionRead | None  # None when it already matched
+
+
+# ---- CSV import ----
+# The browser reads the CSV file and turns each line into an ImportRow. The server
+# never sees the file itself, only clean rows, so it doesn't care where the file came from:
+# a bank's export, or your own spreadsheet saved as CSV.
+
+class ImportRow(BaseModel):
+    date: dt.date
+    amount_cents: StrictInt  # negative = money out, like everywhere else
+    payee: Name | None = None
+    notes: Notes | None = None
+
+
+MAX_IMPORT_ROWS = 50_000  # decades of hand-kept rows; more is probably the wrong file
+
+
+class ImportPreviewItem(ImportRow):
+    account_id: int | None = None  # None: going into a new account, so nothing can be a duplicate
+
+
+class ImportPreviewRequest(BaseModel):
+    rows: Annotated[list[ImportPreviewItem], Field(max_length=MAX_IMPORT_ROWS)]
+
+
+class ImportPreviewRow(ImportPreviewItem):
+    duplicate: bool  # looks like a transaction that's already in this account
+    suggested_category_id: int | None  # the category last used with this payee
+
+
+# A reference to an account or category in an import: an int is the id of one that exists,
+# a str is the key of one in new_accounts / new_categories, created by this same import.
+# The browser can't know a new row's id before the database makes it, so it uses its own
+# temporary keys ("account:Amex"), and the server swaps them for real ids.
+Ref = StrictInt | Annotated[str, StringConstraints(min_length=1, max_length=250)]
+
+
+class NewAccount(BaseModel):
+    key: str
+    name: Name
+    type: AccountType
+
+
+class NewCategory(BaseModel):
+    key: str
+    name: Name
+    kind: CategoryKind
+    parent: Ref | None = None  # an existing top-level category, another new one, or None
+
+
+class ImportCommitRow(ImportRow):
+    account: Ref
+    category: Ref | None = None  # None = uncategorized
+
+
+class ImportCommitRequest(BaseModel):
+    new_accounts: list[NewAccount] = []
+    new_categories: list[NewCategory] = []
+    rows: Annotated[list[ImportCommitRow], Field(min_length=1, max_length=MAX_IMPORT_ROWS)]
+
+
+class ImportResult(BaseModel):
+    created: int  # transactions
+    created_accounts: int
+    created_categories: int

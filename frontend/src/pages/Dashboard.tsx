@@ -12,6 +12,7 @@ import { indexCategories } from "../lib/categories";
 import { comparisonName, formatRange, formatShortDate, monthName, periodTitle } from "../lib/dates";
 import { formatMoney0 } from "../lib/money";
 import { toRows } from "../lib/transactions";
+import { whenOfPeriod } from "../lib/when";
 import { usePanelActions } from "../state/panel";
 import { usePeriod } from "../state/period";
 
@@ -228,7 +229,12 @@ function SpendingCard({ rows, period }: { rows: CategorySpending[] | undefined; 
       <div className="bars">
         {top.length === 0 && <p className="muted">No spending in this period.</p>}
         {top.map((row) => (
-          <div className="row" key={row.category_id ?? "none"}>
+          <Link
+            className="row"
+            key={row.category_id ?? "none"}
+            to={`/transactions?category=${row.category_id ?? "none"}&when=${period ? whenOfPeriod(period) : "all"}`}
+            title={`See ${row.name} transactions`}
+          >
             <span className="name">{row.name}</span>
             <span className="t">
               <i style={{ width: `${(row.spending_cents / biggest) * 100}%` }} />
@@ -237,7 +243,7 @@ function SpendingCard({ rows, period }: { rows: CategorySpending[] | undefined; 
             <span className="c">
               <ChangeBadge change={changeOf(row.spending_cents, row.previous_cents)} higherIsBetter={false} show="dollars" />
             </span>
-          </div>
+          </Link>
         ))}
       </div>
     </div>

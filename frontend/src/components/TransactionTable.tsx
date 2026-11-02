@@ -18,6 +18,18 @@ type Props = {
 function describe(row: Row, accounts: Props["accounts"], categories: Props["categories"]) {
   const accountName = (id: number) => accounts.get(id)?.name ?? `Account ${id}`;
 
+  if (row.kind === "transaction" && row.tx.is_adjustment) {
+    // A reconcile entry. It isn't income or spending, so it gets no category and no color.
+    const { tx } = row;
+    return {
+      payee: "Balance adjustment",
+      category: <span className="cat xfer">Adjustment</span>,
+      account: accountName(tx.account_id),
+      notes: tx.notes === "Balance adjustment" ? "" : (tx.notes ?? ""),
+      amount: <span className="num" style={{ color: "var(--ink2)" }}>{formatMoney(tx.amount_cents, { sign: true })}</span>,
+    };
+  }
+
   if (row.kind === "transaction") {
     const { tx } = row;
     const category = tx.category_id === null ? null : categories.get(tx.category_id);

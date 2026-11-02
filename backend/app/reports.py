@@ -16,11 +16,20 @@ from app.models import Category, CategoryKind, Transaction
 from app.periods import Period, PeriodKind, bounds
 
 
+def is_cash_flow():
+    """SQL condition: does this transaction count toward income or spending?
+
+    Transfers (money moving between your own accounts) and balance adjustments
+    (reconcile entries) change balances, but you didn't earn or spend anything.
+    """
+    return Transaction.transfer_id.is_(None) & Transaction.is_adjustment.is_(False)
+
+
 def income_cents():
     """SQL expression: how much this transaction adds to income (0 if none).
 
     Only valid in a query that LEFT OUTER JOINs Category, so Category.kind is
-    NULL for uncategorized transactions. Transfers are filtered out by the caller.
+    NULL for uncategorized transactions. The caller filters with is_cash_flow().
     """
     return case(
         (Category.kind == CategoryKind.INCOME, Transaction.amount_cents),
@@ -50,7 +59,7 @@ def income_and_spending(db: Session, start: dt.date, end: dt.date) -> tuple[int,
         # OUTER join: keep uncategorized transactions (their Category columns are NULL).
         .outerjoin(Category, Transaction.category_id == Category.id)
         .where(
-            Transaction.transfer_id.is_(None),  # transfers are neither income nor spending
+            is_cash_flow(),
             Transaction.date >= start,
             Transaction.date <= end,
         )
@@ -91,7 +100,7 @@ def cash_flow(db: Session, end: dt.date, months: int) -> list[dict]:
         .select_from(Transaction)
         .outerjoin(Category, Transaction.category_id == Category.id)
         .where(
-            Transaction.transfer_id.is_(None),
+            is_cash_flow(),
             Transaction.date >= start,
             Transaction.date <= end,
         )
@@ -118,7 +127,7 @@ def spending_per_category(db: Session, start: dt.date, end: dt.date) -> dict[int
         .select_from(Transaction)
         .outerjoin(Category, Transaction.category_id == Category.id)
         .where(
-            Transaction.transfer_id.is_(None),
+            is_cash_flow(),
             Transaction.date >= start,
             Transaction.date <= end,
         )
@@ -214,7 +223,7 @@ def spending_per_bucket(db: Session, kind: PeriodKind, start: dt.date, end: dt.d
         .select_from(Transaction)
         .outerjoin(Category, Transaction.category_id == Category.id)
         .where(
-            Transaction.transfer_id.is_(None),
+            is_cash_flow(),
             Transaction.date >= start,
             Transaction.date <= end,
         )

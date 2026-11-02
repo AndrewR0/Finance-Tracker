@@ -7,6 +7,7 @@ __pycache__/
 # Local data (the SQLite database holds your real finances)
 *.db
 *.sqlite3
+backend/backups/
 
 # Frontend
 node_modules/

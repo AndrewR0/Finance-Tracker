@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, type FormEvent } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { api, type Account, type CategoryTree, type Transaction } from "../api/client";
 import { useAccounts, useCategories, useSave, useTransactions } from "../api/hooks";
@@ -7,17 +8,32 @@ import { categoryOptions, indexCategories, type CategoryInfo } from "../lib/cate
 import { monthBounds, todayISO } from "../lib/dates";
 import { formatMoney0, parseMoney } from "../lib/money";
 import { lastCategoryByPayee, matchesSearch, moneyInOut, toRows } from "../lib/transactions";
+import { formatWhen, parseWhen, whenRange, type When } from "../lib/when";
 import { usePanelActions } from "../state/panel";
 
 export function Transactions() {
   const { open } = usePanelActions();
-  const [search, setSearch] = useState("");
-  const [month, setMonth] = useState(todayISO().slice(0, 7)); // "2026-10"; "" = all dates
-  const [accountId, setAccountId] = useState(""); // "" = all accounts
-  const [categoryFilter, setCategoryFilter] = useState(""); // "", "none", or an id
+  // The filters live in the URL (?when=2026-10&category=5), not in useState, so the
+  // dashboard can link straight to "Food in October", and Back/Forward and refresh keep them.
+  const [params, setParams] = useSearchParams();
+  const search = params.get("q") ?? "";
+  const accountId = params.get("account") ?? ""; // "" = all accounts
+  const categoryFilter = params.get("category") ?? ""; // "", "none", or an id
+  const when = parseWhen(params.get("when"), todayISO());
 
-  const range = month ? monthBounds(month) : {};
-  const transactions = useTransactions({ account_id: accountId ? Number(accountId) : undefined, ...range }).data;
+  function setParam(key: string, value: string) {
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        if (value) next.set(key, value);
+        else next.delete(key);
+        return next;
+      },
+      { replace: true }, // filtering isn't navigating: don't fill the Back button's history
+    );
+  }
+
+  const transactions = useTransactions({ account_id: accountId ? Number(accountId) : undefined, ...whenRange(when) }).data;
   const accounts = useAccounts().data ?? [];
   const tree = useCategories().data ?? [];
 
@@ -43,9 +59,9 @@ export function Transactions() {
           <div className="sub">Click any row to edit it in the side panel</div>
         </div>
         <div className="controls">
-          <button className="btn" disabled title="Coming later (feature 8)">
+          <Link className="btn" to="/import">
             Import CSV
-          </button>
+          </Link>
           <button className="btn-neon" onClick={() => open({ mode: "new", type: "expense" })}>
             + Add transaction
           </button>
@@ -58,10 +74,10 @@ export function Transactions() {
           style={{ width: 240 }}
           placeholder="Search payee or notes"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => setParam("q", e.target.value)}
         />
-        <input className="input" type="month" value={month} onChange={(e) => setMonth(e.target.value)} title="Clear for all dates" />
-        <select className="select" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+        <WhenPicker when={when} onChange={(next) => setParam("when", formatWhen(next))} />
+        <select className="select" value={accountId} onChange={(e) => setParam("account", e.target.value)}>
           <option value="">All accounts</option>
           {accounts.map((a) => (
             <option key={a.id} value={a.id}>
@@ -70,7 +86,7 @@ export function Transactions() {
             </option>
           ))}
         </select>
-        <select className="select" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+        <select className="select" value={categoryFilter} onChange={(e) => setParam("category", e.target.value)}>
           <option value="">All categories</option>
           <option value="none">Uncategorized</option>
           {(["expense", "income", "transfer"] as const).map((kind) => (
@@ -102,10 +118,91 @@ export function Transactions() {
   );
 }
 
-/** A parent category also matches its subcategories: "Food" shows Groceries and Coffee too. */
+const MODES: { mode: When["mode"]; label: string }[] = [
+  { mode: "month", label: "Month" },
+  { mode: "year", label: "Year" },
+  { mode: "all", label: "All" },
+  { mode: "range", label: "Range" },
+];
+
+/** Month / Year / All / Range, plus the inputs for the chosen one. */
+function WhenPicker({ when, onChange }: { when: When; onChange: (when: When) => void }) {
+  const today = todayISO();
+  // Switching modes keeps you near the dates you were looking at.
+  const anchor = when.mode === "all" ? today : when.start;
+
+  function switchTo(mode: When["mode"]) {
+    if (mode === "month") onChange(parseWhen(anchor.slice(0, 7), today));
+    if (mode === "year") onChange(parseWhen(anchor.slice(0, 4), today));
+    if (mode === "all") onChange({ mode: "all" });
+    if (mode === "range") {
+      const { start, end } = when.mode === "all" ? monthBounds(today.slice(0, 7)) : when;
+      onChange({ mode: "range", start, end });
+    }
+  }
+
+  return (
+    <>
+      <span className="seg">
+        {MODES.map((m) => (
+          <button key={m.mode} className={when.mode === m.mode ? "on" : ""} onClick={() => switchTo(m.mode)}>
+            {m.label}
+          </button>
+        ))}
+      </span>
+      {when.mode === "month" && (
+        <input
+          className="input"
+          type="month"
+          required
+          aria-label="Month"
+          value={when.month}
+          onChange={(e) => e.target.value && onChange(parseWhen(e.target.value, today))}
+        />
+      )}
+      {when.mode === "year" && (
+        <input
+          className="input"
+          type="number"
+          aria-label="Year"
+          min={1990}
+          max={2100}
+          style={{ width: 90 }}
+          value={when.year}
+          onChange={(e) => /^\d{4}$/.test(e.target.value) && onChange(parseWhen(e.target.value, today))}
+        />
+      )}
+      {when.mode === "range" && (
+        <>
+          <input
+            className="input"
+            type="date"
+            aria-label="From"
+            value={when.start}
+            onChange={(e) => e.target.value && onChange(parseWhen(`${e.target.value}..${when.end}`, today))}
+          />
+          <span className="muted">to</span>
+          <input
+            className="input"
+            type="date"
+            aria-label="To"
+            value={when.end}
+            onChange={(e) => e.target.value && onChange(parseWhen(`${when.start}..${e.target.value}`, today))}
+          />
+        </>
+      )}
+    </>
+  );
+}
+
+/**
+ * A parent category also matches its subcategories: "Food" shows Groceries and Coffee too.
+ * "none" means uncategorized income or spending, the way the dashboard counts it, so
+ * transfers and balance adjustments (which have no category on purpose) are left out.
+ */
 function matchesCategory(tx: Transaction, filter: string, categories: Map<number, CategoryInfo>): boolean {
   if (filter === "") return true;
-  if (filter === "none") return tx.category_id === null;
+  if (filter === "none") return tx.category_id === null && tx.transfer_id === null && !tx.is_adjustment;
   if (tx.category_id === null) return false;
   const id = Number(filter);
   return tx.category_id === id || categories.get(tx.category_id)?.parentId === id;

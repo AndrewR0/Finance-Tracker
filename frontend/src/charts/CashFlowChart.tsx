@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import type { CashFlowMonth } from "../api/client";
@@ -5,8 +6,9 @@ import { COLORS } from "../lib/colors";
 import { monthLabel } from "../lib/dates";
 import { formatMoney0, formatMoneyShort, niceTicks } from "../lib/money";
 
-/** Income (blue) and spending (pink) side by side for each month. */
+/** Income (blue) and spending (pink) side by side for each month. Click a month to see its transactions. */
 export function CashFlowChart({ months }: { months: CashFlowMonth[] }) {
+  const navigate = useNavigate();
   const data = months.map((m) => ({ ...m, label: monthLabel(m.month) }));
   // Income can dip below zero (a paycheck correction); then let Recharts pick the axis.
   const lowest = Math.min(0, ...months.map((m) => Math.min(m.income_cents, m.spending_cents)));
@@ -15,7 +17,17 @@ export function CashFlowChart({ months }: { months: CashFlowMonth[] }) {
   return (
     <div className="cash">
       <ResponsiveContainer width="100%" height={200}>
-        <BarChart data={data} margin={{ top: 10, right: 4, bottom: 0, left: 0 }} barGap={2}>
+        <BarChart
+          data={data}
+          margin={{ top: 10, right: 4, bottom: 0, left: 0 }}
+          barGap={2}
+          style={{ cursor: "pointer" }}
+          // A click anywhere in a month's column (not just on a bar) opens that month's transactions.
+          onClick={(state) => {
+            const index = state?.activeTooltipIndex;
+            if (index != null && data[index]) navigate(`/transactions?when=${data[index].month}`);
+          }}
+        >
           <CartesianGrid vertical={false} stroke={COLORS.grid} />
           <XAxis dataKey="label" tick={{ fill: COLORS.axis, fontSize: 12 }} axisLine={false} tickLine={false} />
           <YAxis

@@ -4,7 +4,7 @@ import datetime as dt
 import enum
 from datetime import datetime
 
-from sqlalchemy import Enum, ForeignKey, Index, String, UniqueConstraint, func, text
+from sqlalchemy import Enum, ForeignKey, Index, String, UniqueConstraint, false, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -94,6 +94,9 @@ class Transaction(Base):
     notes: Mapped[str | None] = mapped_column(String(500))
     # Set on both legs of a transfer; None for ordinary income and expenses.
     transfer_id: Mapped[int | None] = mapped_column(ForeignKey("transfers.id"), index=True)
+    # A reconcile entry: it fixes a balance to match a statement. Like a transfer, it is
+    # neither income nor spending. server_default fills in existing rows during the migration.
+    is_adjustment: Mapped[bool] = mapped_column(default=False, server_default=false())
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     payee: Mapped[Payee | None] = relationship()

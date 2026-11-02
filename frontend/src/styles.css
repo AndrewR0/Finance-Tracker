@@ -1105,3 +1105,166 @@ tr.acct:hover .icon-btn,
 .rename .form-error {
   flex-basis: 100%
 }
+
+/* small buttons inside table rows (reconcile, close, delete) */
+.btn.small {
+  padding: 4px 10px;
+  font-size: 12px
+}
+
+.acct-actions {
+  white-space: nowrap
+}
+
+.acct-actions .btn + .btn {
+  margin-left: 6px
+}
+
+tr.reconcile td {
+  background: rgba(46, 230, 255, .04);
+  padding: 10px
+}
+
+tr.catrow:hover .icon-btn {
+  opacity: 1
+}
+
+/* names that link to their transactions: look like text until hovered */
+.plain-link {
+  color: inherit;
+  text-decoration: none
+}
+
+.plain-link:hover {
+  color: var(--cyan-soft);
+  text-decoration: underline;
+  text-underline-offset: 3px
+}
+
+/* a <Link> that looks like a button */
+a.btn,
+a.btn-neon {
+  text-decoration: none;
+  display: inline-block
+}
+
+/* dashboard category bars link to their transactions */
+.bars a.row {
+  color: inherit;
+  text-decoration: none;
+  border-radius: 6px;
+  margin: 3px -6px;
+  padding: 8px 6px
+}
+
+.bars a.row:hover {
+  background: rgba(255, 255, 255, .035)
+}
+
+.bars a.row:hover .name {
+  color: var(--cyan-soft)
+}
+
+/* CSV import */
+.import-step {
+  margin-bottom: 16px
+}
+
+.import-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-top: 12px
+}
+
+.import-row .field {
+  min-width: 170px
+}
+
+.check {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--ink2);
+  font-size: 13px;
+  cursor: pointer
+}
+
+.import-sample {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .025);
+  font-size: 13px;
+  line-height: 1.7
+}
+
+.import-done {
+  margin-bottom: 16px;
+  border-color: rgba(94, 240, 176, .45)
+}
+
+.import-problems {
+  margin: 8px 0 12px;
+  font-size: 12.5px
+}
+
+.import-problems summary {
+  cursor: pointer
+}
+
+.input.slim,
+.select.slim {
+  padding: 4px 8px;
+  font-size: 12.5px;
+  width: 100%
+}
+
+td .input.slim {
+  width: calc(100% - 120px);
+  min-width: 140px
+}
+
+.dup {
+  margin-left: 8px;
+  font-size: 11.5px;
+  color: var(--pink-soft);
+  white-space: nowrap
+}
+
+tr.skipped td {
+  opacity: .45
+}
+
+/* spreadsheet import: the how-to and the name-matching tables */
+.sheet-guide {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--ink2)
+}
+
+.sheet-guide summary {
+  cursor: pointer;
+  color: var(--cyan-soft)
+}
+
+.sheet-guide ol {
+  margin: 10px 0;
+  padding-left: 20px;
+  line-height: 1.6
+}
+
+.sheet-guide li + li {
+  margin-top: 4px
+}
+
+table.names td {
+  padding-top: 6px;
+  padding-bottom: 6px
+}
+
+table.names tr.child td:first-child {
+  padding-left: 26px;
+  color: var(--ink2)
+}

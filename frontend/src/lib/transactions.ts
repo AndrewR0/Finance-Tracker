@@ -73,12 +73,15 @@ export function lastCategoryByPayee(transactions: Transaction[]): Map<string, nu
   return result;
 }
 
-/** Money in and out of the listed transactions, by sign. Transfers are left out. */
+/**
+ * Money in and out of the listed transactions, by sign. Transfers and balance
+ * adjustments are left out, the same rule the dashboard uses.
+ */
 export function moneyInOut(transactions: Transaction[]): { in: number; out: number } {
   let moneyIn = 0;
   let moneyOut = 0;
   for (const tx of transactions) {
-    if (tx.transfer_id !== null) continue;
+    if (tx.transfer_id !== null || tx.is_adjustment) continue;
     if (tx.amount_cents > 0) moneyIn += tx.amount_cents;
     else moneyOut -= tx.amount_cents;
   }

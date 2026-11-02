@@ -21,6 +21,7 @@ export type Change = Schemas["Change"];
 export type Pace = Schemas["SpendingPace"];
 export type CashFlowMonth = Schemas["CashFlowMonth"];
 export type CategorySpending = Schemas["CategorySpending"];
+export type ImportPreviewRow = Schemas["ImportPreviewRow"];
 
 /** The backend answered with an error. message is FastAPI's "detail", made readable. */
 export class ApiError extends Error {
@@ -85,10 +86,19 @@ export const api = {
   createAccount: (body: Schemas["AccountCreate"]) => request<Schemas["AccountRead"]>("POST", "/api/accounts", body),
   updateAccount: (id: number, body: Schemas["AccountUpdate"]) =>
     request<Schemas["AccountRead"]>("PATCH", `/api/accounts/${id}`, body),
+  reconcileAccount: (id: number, body: Schemas["ReconcileRequest"]) =>
+    request<Schemas["ReconcileResult"]>("POST", `/api/accounts/${id}/reconcile`, body),
+  closeAccount: (id: number) => request<Schemas["AccountRead"]>("POST", `/api/accounts/${id}/close`),
+  reopenAccount: (id: number) => request<Schemas["AccountRead"]>("POST", `/api/accounts/${id}/reopen`),
 
   categories: (kind?: CategoryKind) => request<CategoryTree[]>("GET", "/api/categories" + query({ kind })),
   createCategory: (body: Schemas["CategoryCreate"]) =>
     request<Schemas["CategoryRead"]>("POST", "/api/categories", body),
+  updateCategory: (id: number, body: Schemas["CategoryUpdate"]) =>
+    request<Schemas["CategoryRead"]>("PATCH", `/api/categories/${id}`, body),
+  /** moveTo: where its transactions go; null leaves them uncategorized. */
+  deleteCategory: (id: number, moveTo: number | null) =>
+    request<Schemas["CategoryDeleted"]>("DELETE", `/api/categories/${id}` + query({ move_to: moveTo })),
 
   transactions: (filters: { account_id?: number; start?: string; end?: string } = {}) =>
     request<Transaction[]>("GET", "/api/transactions" + query(filters)),
@@ -103,6 +113,11 @@ export const api = {
   updateTransfer: (id: number, body: Schemas["TransferUpdate"]) =>
     request<Transfer>("PATCH", `/api/transfers/${id}`, body),
   deleteTransfer: (id: number) => request<void>("DELETE", `/api/transfers/${id}`),
+
+  importPreview: (body: Schemas["ImportPreviewRequest"]) =>
+    request<ImportPreviewRow[]>("POST", "/api/import/preview", body),
+  importCommit: (body: Schemas["ImportCommitRequest"]) =>
+    request<Schemas["ImportResult"]>("POST", "/api/import", body),
 
   period: (kind: PeriodKind, date: string | null) =>
     request<Period>("GET", "/api/dashboard/period" + query({ kind, date })),

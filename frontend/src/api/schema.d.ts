@@ -46,6 +46,69 @@ export interface paths {
         patch: operations["update_account_api_accounts__account_id__patch"];
         trace?: never;
     };
+    "/api/accounts/{account_id}/reconcile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reconcile Account
+         * @description Make the balance at the end of `date` match a statement, by adding an adjustment entry.
+         *
+         *     History is never rewritten: the difference becomes one new transaction on that date,
+         *     marked is_adjustment so it doesn't count as income or spending.
+         */
+        post: operations["reconcile_account_api_accounts__account_id__reconcile_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{account_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close Account
+         * @description Close an account you no longer use. Its history stays, and it still counts in past reports.
+         *
+         *     The balance must be zero first: a closed account with money in it would quietly keep
+         *     counting toward net worth while being hidden from the lists.
+         */
+        post: operations["close_account_api_accounts__account_id__close_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{account_id}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reopen Account */
+        post: operations["reopen_account_api_accounts__account_id__reopen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/categories": {
         parameters: {
             query?: never;
@@ -65,6 +128,34 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/categories/{category_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Category
+         * @description Delete a category (and its subcategories). Merge two categories with ?move_to=<id>.
+         *
+         *     Its transactions are never deleted: they move to `move_to`, or become uncategorized
+         *     if it's left out. move_to must be the same kind, and can't be one of the categories
+         *     being deleted.
+         */
+        delete: operations["delete_category_api_categories__category_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Category
+         * @description Rename a category, or move it: under another parent, or up to the top level.
+         */
+        patch: operations["update_category_api_categories__category_id__patch"];
         trace?: never;
     };
     "/api/transactions": {
@@ -249,6 +340,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/import/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview Import
+         * @description Saves nothing. Returns the rows in the same order, each marked duplicate or not.
+         */
+        post: operations["preview_import_api_import_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Commit Import
+         * @description Create the new accounts and categories, then every row. If anything is invalid, nothing is saved.
+         */
+        post: operations["commit_import_api_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -345,6 +476,11 @@ export interface components {
             /** Parent Id */
             parent_id?: number | null;
         };
+        /** CategoryDeleted */
+        CategoryDeleted: {
+            /** Moved Transactions */
+            moved_transactions: number;
+        };
         /**
          * CategoryKind
          * @enum {string}
@@ -392,6 +528,20 @@ export interface components {
             subcategories: components["schemas"]["CategoryRead"][];
         };
         /**
+         * CategoryUpdate
+         * @description PATCH body: a new name, and/or a new parent.
+         *
+         *     parent_id: an id moves it under that category; null makes it top-level.
+         *     Leave a field out to keep it. The kind can't change: transactions and
+         *     transfers were checked against it when they were saved.
+         */
+        CategoryUpdate: {
+            /** Name */
+            name?: string;
+            /** Parent Id */
+            parent_id?: number | null;
+        };
+        /**
          * Change
          * @description This period vs the compare period, for one number.
          */
@@ -434,6 +584,107 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** ImportCommitRequest */
+        ImportCommitRequest: {
+            /**
+             * New Accounts
+             * @default []
+             */
+            new_accounts: components["schemas"]["NewAccount"][];
+            /**
+             * New Categories
+             * @default []
+             */
+            new_categories: components["schemas"]["NewCategory"][];
+            /** Rows */
+            rows: components["schemas"]["ImportCommitRow"][];
+        };
+        /** ImportCommitRow */
+        ImportCommitRow: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Amount Cents */
+            amount_cents: number;
+            /** Payee */
+            payee?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Account */
+            account: number | string;
+            /** Category */
+            category?: number | string | null;
+        };
+        /** ImportPreviewItem */
+        ImportPreviewItem: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Amount Cents */
+            amount_cents: number;
+            /** Payee */
+            payee?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Account Id */
+            account_id?: number | null;
+        };
+        /** ImportPreviewRequest */
+        ImportPreviewRequest: {
+            /** Rows */
+            rows: components["schemas"]["ImportPreviewItem"][];
+        };
+        /** ImportPreviewRow */
+        ImportPreviewRow: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Amount Cents */
+            amount_cents: number;
+            /** Payee */
+            payee?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Account Id */
+            account_id?: number | null;
+            /** Duplicate */
+            duplicate: boolean;
+            /** Suggested Category Id */
+            suggested_category_id: number | null;
+        };
+        /** ImportResult */
+        ImportResult: {
+            /** Created */
+            created: number;
+            /** Created Accounts */
+            created_accounts: number;
+            /** Created Categories */
+            created_categories: number;
+        };
+        /** NewAccount */
+        NewAccount: {
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            type: components["schemas"]["AccountType"];
+        };
+        /** NewCategory */
+        NewCategory: {
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            kind: components["schemas"]["CategoryKind"];
+            /** Parent */
+            parent?: number | string | null;
+        };
         /** PacePoint */
         PacePoint: {
             /** Label */
@@ -472,6 +723,27 @@ export interface components {
             previous_date: string | null;
             /** Next Date */
             next_date: string | null;
+        };
+        /**
+         * ReconcileRequest
+         * @description What your bank or card statement says the balance was at the end of `date`.
+         */
+        ReconcileRequest: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Balance Cents */
+            balance_cents: number;
+        };
+        /** ReconcileResult */
+        ReconcileResult: {
+            /** Previous Balance Cents */
+            previous_balance_cents: number;
+            /** Balance Cents */
+            balance_cents: number;
+            adjustment: components["schemas"]["TransactionRead"] | null;
         };
         /** SpendingPace */
         SpendingPace: {
@@ -561,6 +833,8 @@ export interface components {
             transfer_id: number | null;
             /** Transfer Description */
             transfer_description: string | null;
+            /** Is Adjustment */
+            is_adjustment: boolean;
             /**
              * Created At
              * Format: date-time
@@ -762,6 +1036,103 @@ export interface operations {
             };
         };
     };
+    reconcile_account_api_accounts__account_id__reconcile_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReconcileRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReconcileResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    close_account_api_accounts__account_id__close_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reopen_account_api_accounts__account_id__reopen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_categories_api_categories_get: {
         parameters: {
             query?: {
@@ -808,6 +1179,74 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_category_api_categories__category_id__delete: {
+        parameters: {
+            query?: {
+                move_to?: number | null;
+            };
+            header?: never;
+            path: {
+                category_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryDeleted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_category_api_categories__category_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                category_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CategoryUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1235,6 +1674,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CategorySpending"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_import_api_import_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewRow"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    commit_import_api_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportCommitRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResult"];
                 };
             };
             /** @description Validation Error */
