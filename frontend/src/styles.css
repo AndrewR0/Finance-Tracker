@@ -350,7 +350,12 @@ button {
 
 .num {
   font-family: var(--neon);
-  font-variant-numeric: tabular-nums
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap /* never split "−$286.20" after the minus */
+}
+
+.nowrap {
+  white-space: nowrap
 }
 
 .legend {

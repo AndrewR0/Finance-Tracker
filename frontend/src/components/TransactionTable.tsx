@@ -88,7 +88,7 @@ export function TransactionTable({ rows, accounts, categories, variant }: Props)
                 <td className="d">{formatShortDate(row.date)}</td>
                 <td>{cells.payee}</td>
                 <td>{cells.category}</td>
-                <td className="muted">{cells.account}</td>
+                <td className="muted nowrap">{cells.account}</td>
                 <td className="r">{cells.amount}</td>
               </tr>
             );
@@ -125,7 +125,7 @@ export function TransactionTable({ rows, accounts, categories, variant }: Props)
               <tr key={row.key} className="tx" onClick={() => edit(row)}>
                 <td>{cells.payee}</td>
                 <td>{cells.category}</td>
-                <td className="muted">{cells.account}</td>
+                <td className="muted nowrap">{cells.account}</td>
                 <td className="muted">{cells.notes}</td>
                 <td className="r">{cells.amount}</td>
               </tr>
