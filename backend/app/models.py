@@ -135,3 +135,25 @@ class Transfer(Base):
     def to_leg(self) -> Transaction:
         """The leg where money arrives (positive amount)."""
         return next(leg for leg in self.legs if leg.amount_cents > 0)
+
+
+class RecurringSeries(Base):
+    """Your choice about one detected recurring series. Only "ignore it", for now.
+
+    The series themselves are never stored: app/recurring.py derives them from transactions.
+    A series is named by its payee, plus an amount when only that exact amount repeats
+    (rent by Zelle, among other Zelle payments).
+    """
+
+    __tablename__ = "recurring_series"
+    __table_args__ = (
+        # SQLite treats NULLs as all different, so this alone doesn't stop two rows with a
+        # NULL amount for one payee. The router looks a row up before adding one.
+        UniqueConstraint("payee_id", "matched_amount_cents", name="uq_recurring_series"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    payee_id: Mapped[int] = mapped_column(ForeignKey("payees.id"))
+    matched_amount_cents: Mapped[int | None]
+    ignored: Mapped[bool] = mapped_column(default=False, server_default=false())
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())

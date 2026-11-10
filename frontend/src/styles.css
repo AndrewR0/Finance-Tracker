@@ -1273,3 +1273,82 @@ table.names tr.child td:first-child {
   padding-left: 26px;
   color: var(--ink2)
 }
+
+/* payee suggestions (PayeeInput) */
+.combo {
+  position: relative;
+  min-width: 0
+}
+
+.combo > .input {
+  width: 100%
+}
+
+.combo-list {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 100%;
+  max-width: 320px;
+  max-height: 264px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--card2);
+  border: var(--glow-border);
+  border-radius: 10px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .55), 0 0 22px rgba(255, 79, 176, .14);
+  color-scheme: dark;
+  animation: combo-in .12s ease-out
+}
+
+.combo-list li {
+  padding: 7px 10px;
+  border-radius: 6px;
+  color: var(--ink2);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis
+}
+
+.combo-list li.active {
+  background: rgba(46, 230, 255, .08);
+  color: var(--ink);
+  box-shadow: inset 2px 0 0 var(--cyan)
+}
+
+.combo-list mark {
+  background: none;
+  color: var(--cyan);
+  text-shadow: 0 0 6px rgba(46, 230, 255, .65)
+}
+
+@keyframes combo-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px)
+  }
+}
+
+/* recurring */
+.rectable tr.off td {
+  opacity: .55
+}
+
+.due {
+  color: var(--ink3);
+  font-size: 12px;
+  margin-left: 4px
+}
+
+.due.late {
+  color: var(--pink-soft)
+}
+
+.btn.slim {
+  padding: 3px 10px;
+  font-size: 12px
+}

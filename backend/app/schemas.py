@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictInt, StringConstraints
 
 from app.models import AccountType, CategoryKind
 from app.periods import PeriodKind
+from app.recurring import Cadence
 
 # Trims surrounding spaces, then requires 1-100 characters.
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
@@ -321,3 +322,37 @@ class ImportResult(BaseModel):
     created: int  # transactions
     created_accounts: int
     created_categories: int
+
+
+# ---- recurring ----
+
+class RecurringRead(BaseModel):
+    payee_id: int
+    payee_name: str
+    matched_amount_cents: int | None  # set when only this exact amount repeats (rent by Zelle)
+    category_id: int | None
+    account_id: int
+    cadence: Cadence
+    amount_cents: int  # the typical charge, as a POSITIVE number
+    amount_varies: bool  # True: amount_cents is an estimate (a gas or water bill)
+    monthly_cents: int  # average cost per month
+    charges: int  # how many charges the pattern is based on
+    last_date: dt.date
+    next_date: dt.date  # may be a few days past: due, not posted yet
+    ignored: bool
+
+
+class UpcomingCharge(BaseModel):
+    date: dt.date
+    payee_id: int
+    payee_name: str
+    category_id: int | None
+    cadence: Cadence
+    amount_cents: int
+    amount_varies: bool
+
+
+class RecurringIgnore(BaseModel):
+    payee_id: int
+    matched_amount_cents: int | None = None
+    ignored: bool

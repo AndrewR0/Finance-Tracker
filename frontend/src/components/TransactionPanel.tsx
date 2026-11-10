@@ -14,6 +14,7 @@ import { categoryOptions, indexCategories } from "../lib/categories";
 import { todayISO } from "../lib/dates";
 import { centsToInput, formatMoney, parseMoney } from "../lib/money";
 import { lastCategoryByPayee } from "../lib/transactions";
+import { PayeeInput } from "./PayeeInput";
 import { usePanelActions, usePanelState, type EntryType, type PanelTarget } from "../state/panel";
 
 type FormValues = {
@@ -134,7 +135,7 @@ function PanelForm({ initial, editing }: { initial: FormValues; editing: Editing
   const openAccounts = accounts.filter((a) => a.closed_at === null || String(a.id) === initial.accountId);
   const categories = useMemo(() => indexCategories(tree), [tree]);
   const payeeMemory = useMemo(() => lastCategoryByPayee(history), [history]);
-  const payeeNames = useMemo(() => [...new Set(history.map((t) => t.payee_name).filter(Boolean))], [history]);
+  const payeeNames = useMemo(() => [...new Set(history.map((t) => t.payee_name).filter((n): n is string => !!n))], [history]);
 
   // Defaults that depend on loaded data, worked out on every render instead of stored.
   const fromId = form.accountId || String(openAccounts[0]?.id ?? "");
@@ -321,18 +322,13 @@ function PanelForm({ initial, editing }: { initial: FormValues; editing: Editing
           </div>
           <label className="field">
             Payee
-            <input className="input" list="payee-names" value={form.payee} onChange={(e) => onPayeeChange(e.target.value)} />
+            <PayeeInput value={form.payee} onChange={onPayeeChange} names={payeeNames} />
             {remembered != null && String(remembered) !== form.categoryId && (
               <span className="hint">
                 Last time: <b>{categories.get(remembered)?.label}</b>
               </span>
             )}
           </label>
-          <datalist id="payee-names">
-            {payeeNames.map((name) => (
-              <option key={name} value={name as string} />
-            ))}
-          </datalist>
           <label className="field">
             Category
             <select className="select" value={form.categoryId} onChange={(e) => update({ categoryId: e.target.value })}>

@@ -8,6 +8,7 @@ import { Accounts } from "./pages/Accounts";
 import { Categories } from "./pages/Categories";
 import { Dashboard } from "./pages/Dashboard";
 import { Import } from "./pages/Import";
+import { Recurring } from "./pages/Recurring";
 import { Transactions } from "./pages/Transactions";
 import { PanelProvider } from "./state/panel";
 import { PeriodProvider } from "./state/period";
@@ -29,10 +30,7 @@ export function App() {
               path="/investments"
               element={<ComingSoon title="Investments">Trades, holdings and your returns vs the S&P 500 arrive with feature 5.</ComingSoon>}
             />
-            <Route
-              path="/recurring"
-              element={<ComingSoon title="Recurring">Spotting repeat bills and showing what's coming up arrives with feature 4.</ComingSoon>}
-            />
+            <Route path="/recurring" element={<Recurring />} />
             <Route
               path="/goals"
               element={<ComingSoon title="Goals">Savings goals linked to an account arrive with feature 6.</ComingSoon>}

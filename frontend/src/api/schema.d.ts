@@ -380,6 +380,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/recurring": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Recurring
+         * @description Every detected series, soonest next charge first. Ignored ones are included, marked.
+         */
+        get: operations["list_recurring_api_recurring_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/recurring/upcoming": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Upcoming Charges
+         * @description Expected charges from today through the next `days` days, leaving out ignored series.
+         */
+        get: operations["upcoming_charges_api_recurring_upcoming_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/recurring/ignored": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Ignored
+         * @description Hide a series ({"ignored": true}) or bring it back ({"ignored": false}).
+         */
+        put: operations["set_ignored_api_recurring_ignored_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -457,6 +517,11 @@ export interface components {
             /** Balance Cents */
             balance_cents: number;
         };
+        /**
+         * Cadence
+         * @enum {string}
+         */
+        Cadence: "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly";
         /** CashFlowMonth */
         CashFlowMonth: {
             /** Month */
@@ -745,6 +810,49 @@ export interface components {
             balance_cents: number;
             adjustment: components["schemas"]["TransactionRead"] | null;
         };
+        /** RecurringIgnore */
+        RecurringIgnore: {
+            /** Payee Id */
+            payee_id: number;
+            /** Matched Amount Cents */
+            matched_amount_cents?: number | null;
+            /** Ignored */
+            ignored: boolean;
+        };
+        /** RecurringRead */
+        RecurringRead: {
+            /** Payee Id */
+            payee_id: number;
+            /** Payee Name */
+            payee_name: string;
+            /** Matched Amount Cents */
+            matched_amount_cents: number | null;
+            /** Category Id */
+            category_id: number | null;
+            /** Account Id */
+            account_id: number;
+            cadence: components["schemas"]["Cadence"];
+            /** Amount Cents */
+            amount_cents: number;
+            /** Amount Varies */
+            amount_varies: boolean;
+            /** Monthly Cents */
+            monthly_cents: number;
+            /** Charges */
+            charges: number;
+            /**
+             * Last Date
+             * Format: date
+             */
+            last_date: string;
+            /**
+             * Next Date
+             * Format: date
+             */
+            next_date: string;
+            /** Ignored */
+            ignored: boolean;
+        };
         /** SpendingPace */
         SpendingPace: {
             kind: components["schemas"]["PeriodKind"];
@@ -914,6 +1022,25 @@ export interface components {
             description?: string | null;
             /** Category Id */
             category_id?: number | null;
+        };
+        /** UpcomingCharge */
+        UpcomingCharge: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Payee Id */
+            payee_id: number;
+            /** Payee Name */
+            payee_name: string;
+            /** Category Id */
+            category_id: number | null;
+            cadence: components["schemas"]["Cadence"];
+            /** Amount Cents */
+            amount_cents: number;
+            /** Amount Varies */
+            amount_varies: boolean;
         };
         /** ValidationError */
         ValidationError: {
@@ -1741,6 +1868,88 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ImportResult"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_recurring_api_recurring_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringRead"][];
+                };
+            };
+        };
+    };
+    upcoming_charges_api_recurring_upcoming_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpcomingCharge"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_ignored_api_recurring_ignored_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecurringIgnore"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

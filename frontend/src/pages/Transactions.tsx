@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 
 import { api, type Account, type CategoryTree, type Transaction } from "../api/client";
 import { useAccounts, useCategories, useSave, useTransactions } from "../api/hooks";
+import { PayeeInput } from "../components/PayeeInput";
 import { TransactionTable } from "../components/TransactionTable";
 import { categoryOptions, indexCategories, type CategoryInfo } from "../lib/categories";
 import { monthBounds, todayISO } from "../lib/dates";
@@ -219,7 +220,7 @@ function QuickAdd({ accounts, tree, categories }: QuickAddProps) {
   const { open } = usePanelActions();
   const history = useTransactions().data ?? [];
   const payeeMemory = useMemo(() => lastCategoryByPayee(history), [history]);
-  const payeeNames = useMemo(() => [...new Set(history.map((t) => t.payee_name).filter(Boolean))], [history]);
+  const payeeNames = useMemo(() => [...new Set(history.map((t) => t.payee_name).filter((n): n is string => !!n))], [history]);
   const openAccounts = accounts.filter((a) => a.closed_at === null);
 
   const [date, setDate] = useState(todayISO());
@@ -284,14 +285,7 @@ function QuickAdd({ accounts, tree, categories }: QuickAddProps) {
             ⇄
           </button>
         </span>
-        <input
-          ref={payeeRef}
-          className="input"
-          placeholder="Payee"
-          list="quick-payees"
-          value={payee}
-          onChange={(e) => onPayeeChange(e.target.value)}
-        />
+        <PayeeInput inputRef={payeeRef} placeholder="Payee" ariaLabel="Payee" value={payee} onChange={onPayeeChange} names={payeeNames} />
         <select className="select" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
           <option value="">Uncategorized</option>
           {(type === "expense" ? (["expense", "income"] as const) : (["income", "expense"] as const)).map((kind) => (
@@ -319,11 +313,6 @@ function QuickAdd({ accounts, tree, categories }: QuickAddProps) {
           Add
         </button>
       </form>
-      <datalist id="quick-payees">
-        {payeeNames.map((name) => (
-          <option key={name} value={name as string} />
-        ))}
-      </datalist>
       {error && <p className="form-error" style={{ marginTop: -4 }}>{error}</p>}
     </>
   );

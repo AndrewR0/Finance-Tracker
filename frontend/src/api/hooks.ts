@@ -86,6 +86,15 @@ export function useSpendingByCategory(period: Period | undefined) {
   });
 }
 
+export function useRecurring() {
+  return useQuery({ queryKey: ["recurring"], queryFn: api.recurring });
+}
+
+/** Expected charges from today through the next `days` days. */
+export function useUpcoming(days: number) {
+  return useQuery({ queryKey: ["upcoming", days], queryFn: () => api.upcoming(days) });
+}
+
 /** Wrap any API call that changes data. On success, everything on screen refreshes. */
 export function useSave<Args, Result>(save: (args: Args) => Promise<Result>) {
   const queryClient = useQueryClient();

@@ -2,7 +2,16 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 
 import type { CategorySpending, Pace, Period, Summary } from "../api/client";
-import { useAccounts, useCashFlow, useCategories, usePace, useSpendingByCategory, useSummary, useTransactions } from "../api/hooks";
+import {
+  useAccounts,
+  useCashFlow,
+  useCategories,
+  usePace,
+  useSpendingByCategory,
+  useSummary,
+  useTransactions,
+  useUpcoming,
+} from "../api/hooks";
 import { CashFlowChart } from "../charts/CashFlowChart";
 import { PaceChart } from "../charts/PaceChart";
 import { ChangeBadge, changeOf } from "../components/ChangeBadge";
@@ -11,6 +20,7 @@ import { TransactionTable } from "../components/TransactionTable";
 import { indexCategories } from "../lib/categories";
 import { comparisonName, formatRange, formatShortDate, monthName, periodTitle } from "../lib/dates";
 import { formatMoney0 } from "../lib/money";
+import { formatCharge } from "../lib/recurring";
 import { toRows } from "../lib/transactions";
 import { whenOfPeriod } from "../lib/when";
 import { usePanelActions } from "../state/panel";
@@ -65,7 +75,7 @@ export function Dashboard() {
         <KpiCards summary={summary} period={period} />
         <PaceCard pace={choice.kind === "all" ? undefined : pace} period={period} spentAllTime={summary?.spending_cents} />
 
-        <div className="card span2">
+        <div className="card full">
           <h3>
             Cash flow <small>12 months to {period ? formatShortDate(period.end) : "…"}</small>
           </h3>
@@ -77,6 +87,7 @@ export function Dashboard() {
         </div>
 
         <SpendingCard rows={spending} period={period} />
+        <UpcomingCard />
         <RecentCard />
       </div>
     </div>
@@ -246,6 +257,41 @@ function SpendingCard({ rows, period }: { rows: CategorySpending[] | undefined; 
           </Link>
         ))}
       </div>
+    </div>
+  );
+}
+
+const UPCOMING_DAYS = 14;
+
+/** Bills expected in the next two weeks, from the recurring series. Always "from today", whatever period is picked. */
+function UpcomingCard() {
+  const charges = useUpcoming(UPCOMING_DAYS).data;
+  const tree = useCategories().data;
+  const categories = useMemo(() => indexCategories(tree ?? []), [tree]);
+  const total = (charges ?? []).reduce((sum, c) => sum + c.amount_cents, 0);
+
+  return (
+    <div className="card span2">
+      <h3>
+        Upcoming recurring{" "}
+        <small>
+          Next {UPCOMING_DAYS} days{charges ? ` · ${formatMoney0(total)}` : ""} ·{" "}
+          <Link className="link" to="/recurring">All →</Link>
+        </small>
+      </h3>
+      {charges?.length === 0 && <p className="muted">Nothing due in the next {UPCOMING_DAYS} days.</p>}
+      <table style={{ marginTop: 6 }}>
+        <tbody>
+          {(charges ?? []).slice(0, 7).map((c) => (
+            <tr key={`${c.date}:${c.payee_id}:${c.amount_cents}`}>
+              <td className="d">{formatShortDate(c.date)}</td>
+              <td>{c.payee_name}</td>
+              <td>{c.category_id !== null && <span className="cat">{categories.get(c.category_id)?.name}</span>}</td>
+              <td className="r num">{formatCharge(c.amount_cents, c.amount_varies)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

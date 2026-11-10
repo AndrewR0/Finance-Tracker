@@ -22,6 +22,9 @@ export type Pace = Schemas["SpendingPace"];
 export type CashFlowMonth = Schemas["CashFlowMonth"];
 export type CategorySpending = Schemas["CategorySpending"];
 export type ImportPreviewRow = Schemas["ImportPreviewRow"];
+export type Recurring = Schemas["RecurringRead"];
+export type UpcomingCharge = Schemas["UpcomingCharge"];
+export type Cadence = Schemas["Cadence"];
 
 /** The backend answered with an error. message is FastAPI's "detail", made readable. */
 export class ApiError extends Error {
@@ -128,4 +131,7 @@ export const api = {
     request<CashFlowMonth[]>("GET", "/api/dashboard/cash-flow" + query({ end, months })),
   spendingByCategory: (ranges: DateRanges) =>
     request<CategorySpending[]>("GET", "/api/dashboard/spending-by-category" + query(ranges)),
+  recurring: () => request<Recurring[]>("GET", "/api/recurring"),
+  upcoming: (days: number) => request<UpcomingCharge[]>("GET", "/api/recurring/upcoming" + query({ days })),
+  setRecurringIgnored: (body: Schemas["RecurringIgnore"]) => request<void>("PUT", "/api/recurring/ignored", body),
 };
