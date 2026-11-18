@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { centsToInput, formatMoney, formatMoney0, formatMoneyShort, niceTicks, parseMoney } from "./money";
+import { amountInput, centsToInput, formatMoney, formatMoney0, formatMoneyShort, niceTicks, parseMoney } from "./money";
 
 describe("formatMoney", () => {
   it.each([
@@ -86,5 +86,20 @@ describe("parseMoney", () => {
     for (const cents of [1, 99, 100, 8412, 123456]) {
       expect(parseMoney(centsToInput(cents))).toBe(cents);
     }
+  });
+});
+
+describe("amountInput", () => {
+  it.each([
+    ["84.12", "84.12"],
+    ["$1,234.56", "1234.56"], // pasted from a statement
+    ["12.345", "12.34"], // no third decimal
+    ["12.3.4", "12.34"], // one decimal point only
+    ["abc", ""],
+    ["-5", "5"], // the sign comes from the −/+ buttons
+    [".5", ".5"],
+    ["12.", "12."], // mid-typing: keep the point so "12.5" can follow
+  ])("%s -> %s", (typed, kept) => {
+    expect(amountInput(typed)).toBe(kept);
   });
 });

@@ -65,3 +65,13 @@ export function parseMoney(text: string): number | null {
   const cents = Number(whole || "0") * 100 + Number((fraction ?? "").padEnd(2, "0"));
   return minus ? -cents : cents;
 }
+
+/**
+ * Cleans what's typed or pasted into an amount box, keystroke by keystroke: digits and one
+ * decimal point, at most 2 digits after it. The sign comes from the −/+ buttons, not the box.
+ * "$1,234.567" -> "1234.56", "12.3.4" -> "12.34", "abc" -> "".
+ */
+export function amountInput(text: string): string {
+  const [whole, ...rest] = text.replace(/[^\d.]/g, "").split(".");
+  return rest.length === 0 ? whole : `${whole}.${rest.join("").slice(0, 2)}`;
+}

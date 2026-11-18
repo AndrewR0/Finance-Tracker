@@ -12,7 +12,7 @@ import { api, type Transaction, type Transfer } from "../api/client";
 import { useAccounts, useCategories, useSave, useTransactions, useTransfer } from "../api/hooks";
 import { categoryOptions, indexCategories } from "../lib/categories";
 import { todayISO } from "../lib/dates";
-import { centsToInput, formatMoney, parseMoney } from "../lib/money";
+import { amountInput, centsToInput, formatMoney, parseMoney } from "../lib/money";
 import { lastCategoryByPayee } from "../lib/transactions";
 import { PayeeInput } from "./PayeeInput";
 import { usePanelActions, usePanelState, type EntryType, type PanelTarget } from "../state/panel";
@@ -258,7 +258,7 @@ function PanelForm({ initial, editing }: { initial: FormValues; editing: Editing
           inputMode="decimal"
           placeholder="$ 0.00"
           value={form.amount}
-          onChange={(e) => update({ amount: e.target.value })}
+          onChange={(e) => update({ amount: amountInput(e.target.value) })}
         />
       </label>
 

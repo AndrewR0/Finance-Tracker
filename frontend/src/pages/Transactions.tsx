@@ -7,7 +7,7 @@ import { PayeeInput } from "../components/PayeeInput";
 import { TransactionTable } from "../components/TransactionTable";
 import { categoryOptions, indexCategories, type CategoryInfo } from "../lib/categories";
 import { monthBounds, todayISO } from "../lib/dates";
-import { formatMoney0, parseMoney } from "../lib/money";
+import { amountInput, formatMoney0, parseMoney } from "../lib/money";
 import { lastCategoryByPayee, matchesSearch, moneyInOut, toRows } from "../lib/transactions";
 import { formatWhen, parseWhen, whenRange, type When } from "../lib/when";
 import { usePanelActions } from "../state/panel";
@@ -307,7 +307,7 @@ function QuickAdd({ accounts, tree, categories }: QuickAddProps) {
           inputMode="decimal"
           style={{ textAlign: "right" }}
           value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          onChange={(e) => setAmount(amountInput(e.target.value))}
         />
         <button type="submit" className="btn-neon" disabled={save.isPending}>
           Add
