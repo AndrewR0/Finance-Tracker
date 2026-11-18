@@ -890,10 +890,6 @@ tbody tr.tx:hover td {
   .span3 {
     grid-column: span 2
   }
-
-  .quick {
-    grid-template-columns: 1fr 1fr
-  }
 }
 
 /* ---------- additions for the real app (not in the mockup) ---------- */
@@ -1059,8 +1055,20 @@ tbody tr.tx:hover td {
 }
 
 @media (max-width:1100px) {
+  /* Two rows instead of one long one:
+     date | − + ⇄ | payee | category
+     account (2 cells) | amount | Add */
   .quick {
-    grid-template-columns: 1fr 1fr
+    grid-template-columns: 150px auto 1fr 1fr
+  }
+
+  .quick .q-account {
+    grid-column: span 2
+  }
+
+  /* Notes are still in the side panel; the row needs the room more. */
+  .col-notes {
+    display: none
   }
 
   .pace-wrap {
@@ -1351,4 +1359,20 @@ table.names tr.child td:first-child {
 .btn.slim {
   padding: 3px 10px;
   font-size: 12px
+}
+
+/* A table can't shrink below its content. When the window is too narrow anyway, scroll the
+   table inside its card instead of pushing the whole page sideways. */
+.table-scroll {
+  overflow-x: auto
+}
+
+@media (max-width:760px) {
+  .quick {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .quick .typeseg {
+    justify-self: start
+  }
 }

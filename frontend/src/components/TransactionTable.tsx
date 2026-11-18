@@ -74,65 +74,70 @@ export function TransactionTable({ rows, accounts, categories, variant }: Props)
 
   if (variant === "recent") {
     return (
-      <table style={{ marginTop: 6 }}>
-        <tbody>
-          {rows.length === 0 && (
-            <tr className="empty-row">
-              <td colSpan={5}>No transactions yet.</td>
-            </tr>
-          )}
-          {rows.map((row) => {
-            const cells = describe(row, accounts, categories);
-            return (
-              <tr key={row.key} className="tx" onClick={() => edit(row)} style={{ cursor: "pointer" }}>
-                <td className="d">{formatShortDate(row.date)}</td>
-                <td>{cells.payee}</td>
-                <td>{cells.category}</td>
-                <td className="muted nowrap">{cells.account}</td>
-                <td className="r">{cells.amount}</td>
+      <div className="table-scroll">
+        <table style={{ marginTop: 6 }}>
+          <tbody>
+            {rows.length === 0 && (
+              <tr className="empty-row">
+                <td colSpan={5}>No transactions yet.</td>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            )}
+            {rows.map((row) => {
+              const cells = describe(row, accounts, categories);
+              return (
+                <tr key={row.key} className="tx" onClick={() => edit(row)} style={{ cursor: "pointer" }}>
+                  <td className="d">{formatShortDate(row.date)}</td>
+                  <td>{cells.payee}</td>
+                  <td>{cells.category}</td>
+                  <td className="muted nowrap">{cells.account}</td>
+                  <td className="r">{cells.amount}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     );
   }
 
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>Payee</th>
-          <th>Category</th>
-          <th>Account</th>
-          <th>Notes</th>
-          <th className="r">Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.length === 0 && (
-          <tr className="empty-row">
-            <td colSpan={5}>No transactions match.</td>
+    // Scrolls sideways inside its card when the window is too narrow for the table.
+    <div className="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Payee</th>
+            <th>Category</th>
+            <th>Account</th>
+            <th className="col-notes">Notes</th>
+            <th className="r">Amount</th>
           </tr>
-        )}
-        {groupByDay(rows).map((day) => [
-          <tr key={day.date} className="dayhead">
-            <td colSpan={5}>{formatDayHeader(day.date)}</td>
-          </tr>,
-          ...day.items.map((row) => {
-            const cells = describe(row, accounts, categories);
-            return (
-              <tr key={row.key} className="tx" onClick={() => edit(row)}>
-                <td>{cells.payee}</td>
-                <td>{cells.category}</td>
-                <td className="muted nowrap">{cells.account}</td>
-                <td className="muted">{cells.notes}</td>
-                <td className="r">{cells.amount}</td>
-              </tr>
-            );
-          }),
-        ])}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.length === 0 && (
+            <tr className="empty-row">
+              <td colSpan={5}>No transactions match.</td>
+            </tr>
+          )}
+          {groupByDay(rows).map((day) => [
+            <tr key={day.date} className="dayhead">
+              <td colSpan={5}>{formatDayHeader(day.date)}</td>
+            </tr>,
+            ...day.items.map((row) => {
+              const cells = describe(row, accounts, categories);
+              return (
+                <tr key={row.key} className="tx" onClick={() => edit(row)}>
+                  <td>{cells.payee}</td>
+                  <td>{cells.category}</td>
+                  <td className="muted nowrap">{cells.account}</td>
+                  <td className="muted col-notes">{cells.notes}</td>
+                  <td className="r">{cells.amount}</td>
+                </tr>
+              );
+            }),
+          ])}
+        </tbody>
+      </table>
+    </div>
   );
 }

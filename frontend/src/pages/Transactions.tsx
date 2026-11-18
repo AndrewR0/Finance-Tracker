@@ -296,7 +296,7 @@ function QuickAdd({ accounts, tree, categories }: QuickAddProps) {
             </optgroup>
           ))}
         </select>
-        <select className="select" value={account} onChange={(e) => setAccountId(e.target.value)}>
+        <select className="select q-account" value={account} onChange={(e) => setAccountId(e.target.value)}>
           {openAccounts.map((a) => (
             <option key={a.id} value={a.id}>{a.name}</option>
           ))}
