@@ -67,11 +67,15 @@ export function parseMoney(text: string): number | null {
 }
 
 /**
- * Cleans what's typed or pasted into an amount box, keystroke by keystroke: digits and one
- * decimal point, at most 2 digits after it. The sign comes from the −/+ buttons, not the box.
- * "$1,234.567" -> "1234.56", "12.3.4" -> "12.34", "abc" -> "".
+ * Cleans what's typed or pasted into an amount box, keystroke by keystroke: an optional minus
+ * at the start, digits, and one decimal point with at most 2 digits after it.
+ * "$1,234.567" -> "1234.56", "12.3.4" -> "12.34", "-5" -> "-5", "5-" -> "5", "abc" -> "".
+ *
+ * The minus flips the −/+ choice: "−" (expense) with "-20" is a $20 refund.
+ * Pass { negative: false } where a minus makes no sense (transfers).
  */
-export function amountInput(text: string): string {
+export function amountInput(text: string, { negative = true } = {}): string {
+  const minus = negative && /^\s*[-−]/.test(text) ? "-" : "";
   const [whole, ...rest] = text.replace(/[^\d.]/g, "").split(".");
-  return rest.length === 0 ? whole : `${whole}.${rest.join("").slice(0, 2)}`;
+  return minus + (rest.length === 0 ? whole : `${whole}.${rest.join("").slice(0, 2)}`);
 }

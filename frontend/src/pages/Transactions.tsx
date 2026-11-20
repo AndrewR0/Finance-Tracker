@@ -246,7 +246,8 @@ function QuickAdd({ accounts, tree, categories }: QuickAddProps) {
       {
         account_id: Number(account),
         date,
-        amount_cents: type === "expense" ? -Math.abs(cents) : Math.abs(cents),
+        // A minus flips the sign: "−" with "-20" is a $20 refund, which lowers spending.
+        amount_cents: type === "expense" ? -cents : cents,
         payee: payee.trim() || null,
         category_id: categoryId ? Number(categoryId) : null,
         notes: null,

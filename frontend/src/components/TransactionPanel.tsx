@@ -150,7 +150,7 @@ function PanelForm({ initial, editing }: { initial: FormValues; editing: Editing
       if (editing) {
         return api.updateTransfer(editing.id, {
           date: form.date,
-          amount_cents: cents,
+          amount_cents: Math.abs(cents),
           description: form.description.trim() || null,
           category_id: categoryId,
         });
@@ -159,7 +159,7 @@ function PanelForm({ initial, editing }: { initial: FormValues; editing: Editing
         from_account_id: Number(fromId),
         to_account_id: Number(toId),
         date: form.date,
-        amount_cents: cents,
+        amount_cents: Math.abs(cents),
         description: form.description.trim() || null,
         category_id: categoryId,
       });
@@ -167,6 +167,7 @@ function PanelForm({ initial, editing }: { initial: FormValues; editing: Editing
     const body = {
       account_id: Number(fromId),
       date: form.date,
+      // A minus flips the sign: Expense with "-20" is a $20 refund, which lowers spending.
       amount_cents: form.type === "expense" ? -cents : cents,
       payee: form.payee.trim() || null,
       category_id: categoryId,
@@ -188,7 +189,7 @@ function PanelForm({ initial, editing }: { initial: FormValues; editing: Editing
     if (isTransfer && (!toId || toId === fromId)) return setProblem("A transfer needs two different accounts.");
     setProblem(null);
 
-    save.mutate(Math.abs(cents), {
+    save.mutate(cents, {
       onSuccess: () => {
         if (!addAnother) return close();
         update({ amount: "", payee: "", notes: "", description: "", categoryId: "" });
@@ -258,8 +259,13 @@ function PanelForm({ initial, editing }: { initial: FormValues; editing: Editing
           inputMode="decimal"
           placeholder="$ 0.00"
           value={form.amount}
-          onChange={(e) => update({ amount: amountInput(e.target.value) })}
+          onChange={(e) => update({ amount: amountInput(e.target.value, { negative: !isTransfer }) })}
         />
+        {!isTransfer && cents < 0 && (
+          <span className="hint">
+            {form.type === "expense" ? "A refund: this lowers your spending" : "This lowers your income"}
+          </span>
+        )}
       </label>
 
       {isTransfer ? (

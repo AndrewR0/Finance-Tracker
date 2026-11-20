@@ -96,10 +96,18 @@ describe("amountInput", () => {
     ["12.345", "12.34"], // no third decimal
     ["12.3.4", "12.34"], // one decimal point only
     ["abc", ""],
-    ["-5", "5"], // the sign comes from the −/+ buttons
+    ["-5", "-5"], // a refund (or money back out of income)
+    ["−5", "-5"], // the typographic minus, pasted from this app
+    ["5-", "5"], // a minus only counts at the start
+    ["--5", "-5"],
+    ["-", "-"], // mid-typing: keep it so "-5" can follow
     [".5", ".5"],
     ["12.", "12."], // mid-typing: keep the point so "12.5" can follow
   ])("%s -> %s", (typed, kept) => {
     expect(amountInput(typed)).toBe(kept);
+  });
+
+  it("drops the minus where it makes no sense", () => {
+    expect(amountInput("-5", { negative: false })).toBe("5");
   });
 });
