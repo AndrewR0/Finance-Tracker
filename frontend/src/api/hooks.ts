@@ -95,6 +95,10 @@ export function useUpcoming(days: number) {
   return useQuery({ queryKey: ["upcoming", days], queryFn: () => api.upcoming(days) });
 }
 
+export function useGoals() {
+  return useQuery({ queryKey: ["goals"], queryFn: api.goals });
+}
+
 /** Wrap any API call that changes data. On success, everything on screen refreshes. */
 export function useSave<Args, Result>(save: (args: Args) => Promise<Result>) {
   const queryClient = useQueryClient();

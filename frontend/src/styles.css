@@ -1376,3 +1376,74 @@ table.names tr.child td:first-child {
     justify-self: start
   }
 }
+
+/* ---- goals ---- */
+.goal-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr));
+  gap: 16px
+}
+
+.goal.done .t i {
+  background: linear-gradient(90deg, #2bbf8a, var(--good));
+  filter: drop-shadow(0 0 5px rgba(94, 240, 176, .5))
+}
+
+.goal.archived {
+  opacity: .7
+}
+
+.goal-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px
+}
+
+.goal small.up {
+  color: var(--good)
+}
+
+.goal small.down {
+  color: var(--bad)
+}
+
+/* the buttons show on hover (or keyboard focus), like the account pencil */
+.goal-acts {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity .12s ease
+}
+
+.goal:hover .goal-acts,
+.goal-acts:focus-within {
+  opacity: 1
+}
+
+@media (hover: none) {
+  .goal-acts {
+    opacity: 1
+  }
+}
+
+.goal-edit {
+  margin-top: 14px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line)
+}
+
+.goal-edit .row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  margin-top: 12px;
+  flex-wrap: wrap
+}
+
+.goal-edit .row .field {
+  flex: 1;
+  min-width: 140px
+}

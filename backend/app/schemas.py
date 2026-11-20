@@ -10,6 +10,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StringConstraints
 
+from app.goals import GoalStatus
 from app.models import AccountType, CategoryKind
 from app.periods import PeriodKind
 from app.recurring import Cadence
@@ -356,3 +357,47 @@ class RecurringIgnore(BaseModel):
     payee_id: int
     matched_amount_cents: int | None = None
     ignored: bool
+
+
+# ---- goals ----
+
+class GoalCreate(BaseModel):
+    name: Name
+    account_id: int  # the account whose balance funds it
+    target_cents: Annotated[StrictInt, Field(gt=0)]
+    target_date: dt.date | None = None  # optional "by when"
+
+
+class GoalUpdate(BaseModel):
+    """PATCH body. Same rules as TransactionUpdate. archived: true when you bought it."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: Name = None
+    account_id: int = None
+    target_cents: Annotated[StrictInt, Field(gt=0)] = None
+    target_date: dt.date | None = None
+    archived: bool = None
+
+
+class GoalRead(BaseModel):
+    id: int
+    name: str
+    account_id: int
+    target_cents: int
+    target_date: dt.date | None
+    position: int  # fill order among goals on the same account
+    archived_at: datetime | None
+    created_at: datetime
+    # Worked out from the account's balance, not stored. Archived goals show 0 saved.
+    saved_cents: int
+    status: GoalStatus
+    eta: dt.date | None  # funded around this date at the account's current pace
+    needed_per_month_cents: int | None  # to reach the target by target_date
+    account_pace_cents: int  # how much the account grew per month, on average, lately
+
+
+class GoalOrder(BaseModel):
+    """Every goal id, in the order they should fill."""
+
+    ids: Annotated[list[int], Field(min_length=1)]

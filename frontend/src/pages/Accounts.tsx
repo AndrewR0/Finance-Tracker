@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 
 import { api, type Account, type AccountType } from "../api/client";
-import { useAccounts, useSave } from "../api/hooks";
+import { useAccounts, useGoals, useSave } from "../api/hooks";
 import { todayISO } from "../lib/dates";
 import { formatMoney, formatMoney0, parseMoney } from "../lib/money";
 
@@ -110,6 +110,7 @@ type AccountChanges = { name?: string; type?: AccountType };
 
 /** One account. Click ✎ to edit its name and type in place: Enter saves, Esc cancels. */
 function AccountRow({ account }: { account: Account }) {
+  const goalCount = (useGoals().data ?? []).filter((g) => g.account_id === account.id && g.archived_at === null).length;
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(account.name);
   const [type, setType] = useState<AccountType>(account.type);
@@ -165,6 +166,11 @@ function AccountRow({ account }: { account: Account }) {
           ) : (
             <>
               {account.name}
+              {goalCount > 0 && (
+                <span className="muted">
+                  {" "}· linked to {goalCount} {goalCount === 1 ? "goal" : "goals"}
+                </span>
+              )}
               <button className="icon-btn" title={`Edit ${account.name}`} aria-label={`Edit ${account.name}`} onClick={startEditing}>
                 ✎
               </button>

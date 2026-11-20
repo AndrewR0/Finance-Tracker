@@ -157,3 +157,24 @@ class RecurringSeries(Base):
     matched_amount_cents: Mapped[int | None]
     ignored: Mapped[bool] = mapped_column(default=False, server_default=false())
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+class Goal(Base):
+    """Something you're saving up for, funded by the balance of one account.
+
+    Progress is never stored: app/goals.py works it out from the account's balance.
+    When several goals share an account, they fill in `position` order (lowest first).
+    """
+
+    __tablename__ = "goals"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100))
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"))
+    target_cents: Mapped[int]
+    target_date: Mapped[dt.date | None]
+    position: Mapped[int] = mapped_column(default=0, server_default="0")
+    # Set when you bought the thing (or gave up). An archived goal stops claiming money,
+    # so the goals after it on the same account move up.
+    archived_at: Mapped[datetime | None]
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())

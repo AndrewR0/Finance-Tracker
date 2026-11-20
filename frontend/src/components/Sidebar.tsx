@@ -35,7 +35,7 @@ const LINKS: { to: string; label: string; icon: string; soon?: boolean }[] = [
   { to: "/categories", label: "Categories", icon: "categories" },
   { to: "/investments", label: "Investments", icon: "investments", soon: true },
   { to: "/recurring", label: "Recurring", icon: "recurring" },
-  { to: "/goals", label: "Goals", icon: "goals", soon: true },
+  { to: "/goals", label: "Goals", icon: "goals" },
 ];
 
 export function Sidebar() {

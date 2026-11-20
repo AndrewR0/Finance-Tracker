@@ -6,6 +6,7 @@ import {
   useAccounts,
   useCashFlow,
   useCategories,
+  useGoals,
   usePace,
   useSpendingByCategory,
   useSummary,
@@ -19,6 +20,7 @@ import { PeriodPicker } from "../components/PeriodPicker";
 import { TransactionTable } from "../components/TransactionTable";
 import { indexCategories } from "../lib/categories";
 import { comparisonName, formatRange, formatShortDate, monthName, periodTitle } from "../lib/dates";
+import { goalLine, percentOf } from "../lib/goals";
 import { formatMoney0 } from "../lib/money";
 import { formatCharge } from "../lib/recurring";
 import { toRows } from "../lib/transactions";
@@ -89,6 +91,7 @@ export function Dashboard() {
         <SpendingCard rows={spending} period={period} />
         <UpcomingCard />
         <RecentCard />
+        <GoalsCard />
       </div>
     </div>
   );
@@ -306,7 +309,7 @@ function RecentCard() {
   const rows = useMemo(() => toRows(transactions ?? []).slice(0, 6), [transactions]);
 
   return (
-    <div className="card full">
+    <div className="card span3">
       <h3>
         Recent transactions{" "}
         <small>
@@ -314,6 +317,41 @@ function RecentCard() {
         </small>
       </h3>
       <TransactionTable rows={rows} accounts={accountIndex} categories={categories} variant="recent" />
+    </div>
+  );
+}
+
+/** Active goals, in fill order. Like the mockup: a narrow card beside recent transactions. */
+function GoalsCard() {
+  const goals = useGoals().data;
+  const active = (goals ?? []).filter((g) => g.archived_at === null);
+
+  return (
+    <div className="card">
+      <h3>
+        Goals{" "}
+        <small>
+          <Link className="link" to="/goals">{active.length > 0 ? "All →" : "Add one →"}</Link>
+        </small>
+      </h3>
+      {goals && active.length === 0 && <p className="muted">No goals yet.</p>}
+      {active.slice(0, 4).map((g) => {
+        const line = goalLine(g);
+        return (
+          <div key={g.id} className={`goal ${g.status === "done" ? "done" : ""}`}>
+            <div className="top">
+              {g.name}
+              <span className="num">
+                {formatMoney0(g.saved_cents)} / {formatMoney0(g.target_cents)}
+              </span>
+            </div>
+            <div className="t">
+              <i style={{ width: `${percentOf(g.saved_cents, g.target_cents)}%` }} />
+            </div>
+            <small className={line.tone === "good" ? "up" : line.tone === "bad" ? "down" : ""}>{line.text}</small>
+          </div>
+        );
+      })}
     </div>
   );
 }

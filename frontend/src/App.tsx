@@ -7,6 +7,7 @@ import { TransactionPanel } from "./components/TransactionPanel";
 import { Accounts } from "./pages/Accounts";
 import { Categories } from "./pages/Categories";
 import { Dashboard } from "./pages/Dashboard";
+import { Goals } from "./pages/Goals";
 import { Import } from "./pages/Import";
 import { Recurring } from "./pages/Recurring";
 import { Transactions } from "./pages/Transactions";
@@ -31,10 +32,7 @@ export function App() {
               element={<ComingSoon title="Investments">Trades, holdings and your returns vs the S&P 500 arrive with feature 5.</ComingSoon>}
             />
             <Route path="/recurring" element={<Recurring />} />
-            <Route
-              path="/goals"
-              element={<ComingSoon title="Goals">Savings goals linked to an account arrive with feature 6.</ComingSoon>}
-            />
+            <Route path="/goals" element={<Goals />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>

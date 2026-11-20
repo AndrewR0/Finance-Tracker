@@ -25,6 +25,8 @@ export type ImportPreviewRow = Schemas["ImportPreviewRow"];
 export type Recurring = Schemas["RecurringRead"];
 export type UpcomingCharge = Schemas["UpcomingCharge"];
 export type Cadence = Schemas["Cadence"];
+export type Goal = Schemas["GoalRead"];
+export type GoalStatus = Schemas["GoalStatus"];
 
 /** The backend answered with an error. message is FastAPI's "detail", made readable. */
 export class ApiError extends Error {
@@ -134,4 +136,11 @@ export const api = {
   recurring: () => request<Recurring[]>("GET", "/api/recurring"),
   upcoming: (days: number) => request<UpcomingCharge[]>("GET", "/api/recurring/upcoming" + query({ days })),
   setRecurringIgnored: (body: Schemas["RecurringIgnore"]) => request<void>("PUT", "/api/recurring/ignored", body),
+
+  goals: () => request<Goal[]>("GET", "/api/goals"),
+  createGoal: (body: Schemas["GoalCreate"]) => request<Goal>("POST", "/api/goals", body),
+  updateGoal: (id: number, body: Schemas["GoalUpdate"]) => request<Goal>("PATCH", `/api/goals/${id}`, body),
+  /** ids: every goal, first-to-fill first. */
+  reorderGoals: (ids: number[]) => request<Goal[]>("PUT", "/api/goals/order", { ids }),
+  deleteGoal: (id: number) => request<void>("DELETE", `/api/goals/${id}`),
 };

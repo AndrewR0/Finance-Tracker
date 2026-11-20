@@ -440,6 +440,65 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/goals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Goals */
+        get: operations["list_goals_api_goals_get"];
+        put?: never;
+        /** Create Goal */
+        post: operations["create_goal_api_goals_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/goals/{goal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Goal
+         * @description Deleting a goal never touches money: it only stops tracking it.
+         */
+        delete: operations["delete_goal_api_goals__goal_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Goal */
+        patch: operations["update_goal_api_goals__goal_id__patch"];
+        trace?: never;
+    };
+    "/api/goals/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Reorder Goals
+         * @description Set the fill order. Send every goal id, first-to-fill first.
+         */
+        put: operations["reorder_goals_api_goals_order_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -643,6 +702,77 @@ export interface components {
             income_change: components["schemas"]["Change"] | null;
             spending_change: components["schemas"]["Change"] | null;
             saved_change: components["schemas"]["Change"] | null;
+        };
+        /** GoalCreate */
+        GoalCreate: {
+            /** Name */
+            name: string;
+            /** Account Id */
+            account_id: number;
+            /** Target Cents */
+            target_cents: number;
+            /** Target Date */
+            target_date?: string | null;
+        };
+        /**
+         * GoalOrder
+         * @description Every goal id, in the order they should fill.
+         */
+        GoalOrder: {
+            /** Ids */
+            ids: number[];
+        };
+        /** GoalRead */
+        GoalRead: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Account Id */
+            account_id: number;
+            /** Target Cents */
+            target_cents: number;
+            /** Target Date */
+            target_date: string | null;
+            /** Position */
+            position: number;
+            /** Archived At */
+            archived_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Saved Cents */
+            saved_cents: number;
+            status: components["schemas"]["GoalStatus"];
+            /** Eta */
+            eta: string | null;
+            /** Needed Per Month Cents */
+            needed_per_month_cents: number | null;
+            /** Account Pace Cents */
+            account_pace_cents: number;
+        };
+        /**
+         * GoalStatus
+         * @enum {string}
+         */
+        GoalStatus: "done" | "on_track" | "behind" | "no_date";
+        /**
+         * GoalUpdate
+         * @description PATCH body. Same rules as TransactionUpdate. archived: true when you bought it.
+         */
+        GoalUpdate: {
+            /** Name */
+            name?: string;
+            /** Account Id */
+            account_id?: number;
+            /** Target Cents */
+            target_cents?: number;
+            /** Target Date */
+            target_date?: string | null;
+            /** Archived */
+            archived?: boolean;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1950,6 +2080,156 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_goals_api_goals_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoalRead"][];
+                };
+            };
+        };
+    };
+    create_goal_api_goals_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoalCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoalRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_goal_api_goals__goal_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                goal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_goal_api_goals__goal_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                goal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoalUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoalRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reorder_goals_api_goals_order_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoalOrder"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoalRead"][];
+                };
             };
             /** @description Validation Error */
             422: {
