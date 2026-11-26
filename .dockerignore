@@ -1,0 +1,11 @@
+# Never bake real data or local build leftovers into the image.
+**/*.db
+**/*.db-journal
+backend/backups/
+backend/.venv/
+**/__pycache__/
+**/.pytest_cache/
+frontend/node_modules/
+frontend/dist/
+data/
+.git/

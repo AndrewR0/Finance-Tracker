@@ -1,0 +1,18 @@
+# Finance Tracker on the home server.
+# Start / update:  docker compose up -d --build
+# Logs:            docker compose logs -f
+services:
+  finance:
+    build: .
+    container_name: finance-tracker
+    restart: unless-stopped
+    ports:
+      # Reachable from your home network and Tailscale. The app has no login,
+      # so never forward this port on the router.
+      - "8000:8000"
+    environment:
+      # Your time zone, so "today" and "this month" are right. Check with: timedatectl
+      - TZ=America/New_York
+    volumes:
+      # finance.db and its backups live in ./data on the server, outside the container.
+      - ./data:/data
