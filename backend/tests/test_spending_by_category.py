@@ -100,7 +100,7 @@ def test_uncategorized_spending_gets_its_own_row(client, ids):
     rows = report(client)
 
     assert rows == [{"category_id": None, "name": "Uncategorized", "spending_cents": 700,
-                     "previous_cents": None, "subcategories": []}]
+                     "previous_cents": None, "counts_as_saving": False, "subcategories": []}]
 
 
 def test_refunds_reduce_and_income_and_transfers_are_left_out(client, ids):
@@ -152,7 +152,7 @@ def test_category_with_only_previous_spending_still_shows(client, ids):
     rows = report(client, OCT_VS_SEP)
 
     assert rows == [{"category_id": ids["travel"], "name": "Travel", "spending_cents": 0,
-                     "previous_cents": 184000, "subcategories": []}]
+                     "previous_cents": 184000, "counts_as_saving": False, "subcategories": []}]
 
 
 @pytest.mark.parametrize("params", [

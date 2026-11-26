@@ -249,8 +249,10 @@ class SpendingPace(BaseModel):
 class SubcategorySpending(BaseModel):
     category_id: int | None  # None = Uncategorized
     name: str
+    # For a "counts as saving" category (only listed with include_saving), the amount moved to savings.
     spending_cents: int
     previous_cents: int | None  # None when no compare period was asked for
+    counts_as_saving: bool
 
 
 class CategorySpending(SubcategorySpending):

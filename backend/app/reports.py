@@ -143,13 +143,16 @@ def cash_flow(db: Session, end: dt.date, months: int) -> list[dict]:
     return rows
 
 
-def spending_per_category(db: Session, start: dt.date, end: dt.date) -> dict[int | None, int]:
+def spending_per_category(db: Session, start: dt.date, end: dt.date, include_saving: bool = False) -> dict[int | None, int]:
     """{category_id: spending_cents} straight from the transactions, not rolled up.
 
     None is the key for uncategorized spending. Categories with no rows are missing.
+    include_saving: also give "counts as saving" categories their amount moved to savings
+    (otherwise they're 0, since that money isn't spending).
     """
+    amount = spending_cents() + moved_to_savings_cents() if include_saving else spending_cents()
     query = (
-        select(Transaction.category_id, func.sum(spending_cents()))
+        select(Transaction.category_id, func.sum(amount))
         .select_from(Transaction)
         .outerjoin(Category, Transaction.category_id == Category.id)
         .where(
@@ -186,23 +189,28 @@ def spending_by_category(
     start: dt.date,
     end: dt.date,
     compare: tuple[dt.date, dt.date] | None = None,
+    include_saving: bool = False,
 ) -> list[dict]:
     """Spending per top-level expense category, with subcategories nested, biggest first.
 
     compare: an optional (start, end) to fill in previous_cents for each row.
+    include_saving: also list "counts as saving" categories, with the amount moved to savings
+    in spending_cents (and counts_as_saving true so the page can show it as saved, not spent).
     """
     categories = db.scalars(select(Category)).all()
     parent_of = {c.id: c.parent_id for c in categories}
 
-    now = spending_per_category(db, start, end)
-    before = spending_per_category(db, *compare) if compare else None
+    now = spending_per_category(db, start, end, include_saving)
+    before = spending_per_category(db, *compare, include_saving) if compare else None
     now_rolled = roll_up(now, parent_of)
     before_rolled = roll_up(before, parent_of) if before is not None else None
 
-    def row(category_id: int | None, name: str, flat_now: dict, flat_before: dict | None) -> dict:
+    def row(category_id: int | None, name: str, flat_now: dict, flat_before: dict | None,
+            saving: bool = False) -> dict:
         return {
             "category_id": category_id,
             "name": name,
+            "counts_as_saving": saving,
             "spending_cents": flat_now.get(category_id, 0),
             "previous_cents": None if flat_before is None else flat_before.get(category_id, 0),
         }
@@ -213,11 +221,11 @@ def spending_by_category(
     rows = []
     spending_categories = (
         c for c in categories
-        if c.parent_id is None and c.kind == CategoryKind.EXPENSE and not c.counts_as_saving
+        if c.parent_id is None and c.kind == CategoryKind.EXPENSE and (include_saving or not c.counts_as_saving)
     )
     for top in spending_categories:
-        parent_row = row(top.id, top.name, now_rolled, before_rolled)
-        subs = [row(s.id, s.name, now, before) for s in top.subcategories]
+        parent_row = row(top.id, top.name, now_rolled, before_rolled, top.counts_as_saving)
+        subs = [row(s.id, s.name, now, before, s.counts_as_saving) for s in top.subcategories]
         parent_row["subcategories"] = sorted(
             (s for s in subs if has_spending(s)), key=lambda s: (-s["spending_cents"], s["name"])
         )

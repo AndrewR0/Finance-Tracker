@@ -77,10 +77,10 @@ export function useCashFlow(end: string | undefined) {
   });
 }
 
-export function useSpendingByCategory(period: Period | undefined) {
+export function useSpendingByCategory(period: Period | undefined, includeSaving = false) {
   return useQuery({
-    queryKey: ["spending-by-category", period && rangesOf(period)],
-    queryFn: () => api.spendingByCategory(rangesOf(period as Period)),
+    queryKey: ["spending-by-category", period && rangesOf(period), includeSaving],
+    queryFn: () => api.spendingByCategory(rangesOf(period as Period), includeSaving),
     enabled: period !== undefined,
     placeholderData: (previous) => previous,
   });

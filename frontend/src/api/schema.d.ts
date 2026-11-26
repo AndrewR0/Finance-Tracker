@@ -330,6 +330,8 @@ export interface paths {
         /**
          * Spending By Category Report
          * @description Spending per category, biggest first. Add compare_start and compare_end to get previous_cents.
+         *
+         *     ?include_saving=true also lists "counts as saving" categories, with what was moved to savings.
          */
         get: operations["spending_by_category_report_api_dashboard_spending_by_category_get"];
         put?: never;
@@ -635,6 +637,8 @@ export interface components {
             spending_cents: number;
             /** Previous Cents */
             previous_cents: number | null;
+            /** Counts As Saving */
+            counts_as_saving: boolean;
             /** Subcategories */
             subcategories: components["schemas"]["SubcategorySpending"][];
         };
@@ -1035,6 +1039,8 @@ export interface components {
             spending_cents: number;
             /** Previous Cents */
             previous_cents: number | null;
+            /** Counts As Saving */
+            counts_as_saving: boolean;
         };
         /** TransactionCreate */
         TransactionCreate: {
@@ -1921,6 +1927,7 @@ export interface operations {
     spending_by_category_report_api_dashboard_spending_by_category_get: {
         parameters: {
             query: {
+                include_saving?: boolean;
                 start: string;
                 end: string;
                 compare_start?: string | null;

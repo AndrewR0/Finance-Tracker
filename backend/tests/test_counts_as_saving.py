@@ -133,3 +133,23 @@ def test_only_expense_categories_can_count_as_saving(client, setup):
 
 def test_off_by_default(client, setup):
     assert category(client, setup["food"])["counts_as_saving"] is False
+
+
+def test_include_saving_lists_saving_categories_with_amount_moved(client, setup):
+    add(client, setup["checking"], -10000, setup["food"])
+    add(client, setup["checking"], -50000, setup["roth"])
+    add(client, setup["checking"], -20000, setup["roth"], date="2026-09-15")
+
+    rows = client.get("/api/dashboard/spending-by-category", params={
+        **OCTOBER, "compare_start": "2026-09-01", "compare_end": "2026-09-30", "include_saving": "true",
+    }).json()
+
+    savings = next(r for r in rows if r["name"] == "Savings (Extra)")
+    assert savings["counts_as_saving"] is True
+    assert savings["spending_cents"] == 50000
+    assert savings["previous_cents"] == 20000
+    assert savings["subcategories"][0] | {"category_id": 0} == {
+        "category_id": 0, "name": "Roth IRA", "spending_cents": 50000, "previous_cents": 20000, "counts_as_saving": True,
+    }
+    food = next(r for r in rows if r["name"] == "Food")
+    assert food["counts_as_saving"] is False and food["spending_cents"] == 10000

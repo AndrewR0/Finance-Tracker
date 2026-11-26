@@ -139,6 +139,9 @@ def cash_flow_by_month(
 
 
 @router.get("/spending-by-category", response_model=list[CategorySpending])
-def spending_by_category_report(db: DbSession, ranges: DateRanges):
-    """Spending per category, biggest first. Add compare_start and compare_end to get previous_cents."""
-    return spending_by_category(db, ranges.start, ranges.end, ranges.compare)
+def spending_by_category_report(db: DbSession, ranges: DateRanges, include_saving: bool = False):
+    """Spending per category, biggest first. Add compare_start and compare_end to get previous_cents.
+
+    ?include_saving=true also lists "counts as saving" categories, with what was moved to savings.
+    """
+    return spending_by_category(db, ranges.start, ranges.end, ranges.compare, include_saving)

@@ -25,7 +25,7 @@ export function Categories() {
   const nameRef = useRef<HTMLInputElement>(null);
 
   const tree = (useCategories().data ?? []).filter((c) => c.kind === kind);
-  const report = useSpendingByCategory(period).data;
+  const report = useSpendingByCategory(period, true).data; // true: show what Savings (Extra) moved, too
   const spending = useMemo(() => spendingById(report ?? []), [report]);
   const showSpending = kind === "expense"; // the API reports spending only, so far
   const vs = period && comparisonName(period);
@@ -125,15 +125,23 @@ type Shared = {
   columns: number;
 };
 
-/** Spent and change cells, shared by real categories and the Uncategorized row. */
-function SpendingCells({ numbers }: { numbers: Spending }) {
+/**
+ * Spent and change cells, shared by real categories and the Uncategorized row.
+ * saving: a "counts as saving" category, so the amount was saved, not spent: shown in green,
+ * and more is better.
+ */
+function SpendingCells({ numbers, saving = false }: { numbers: Spending; saving?: boolean }) {
   return (
     <>
-      <td className="r num" style={numbers.now ? undefined : { color: "var(--ink3)" }}>
+      <td
+        className={`r num ${saving && numbers.now ? "up" : ""}`}
+        style={numbers.now ? undefined : { color: "var(--ink3)" }}
+        title={saving ? "Moved to savings this period (counts toward Saved, not Spending)" : undefined}
+      >
         {formatMoney0(numbers.now)}
       </td>
       <td className="r">
-        <ChangeBadge change={changeOf(numbers.now, numbers.previous)} higherIsBetter={false} show="dollars" />
+        <ChangeBadge change={changeOf(numbers.now, numbers.previous)} higherIsBetter={saving} show="dollars" />
       </td>
     </>
   );
@@ -175,7 +183,7 @@ function CategoryRow({ category, hasSubcategories = false, spending, showSpendin
             </span>
           )}
         </td>
-        {showSpending && <SpendingCells numbers={numbers} />}
+        {showSpending && <SpendingCells numbers={numbers} saving={category.counts_as_saving} />}
         <td className="r acct-actions">
           <button className="icon-btn" title={`Edit ${category.name}`} aria-label={`Edit ${category.name}`} onClick={() => setMode("edit")}>
             ✎

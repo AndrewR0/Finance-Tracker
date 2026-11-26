@@ -131,8 +131,12 @@ export const api = {
     request<Pace>("GET", "/api/dashboard/spending-pace" + query({ kind, date })),
   cashFlow: (end: string, months = 12) =>
     request<CashFlowMonth[]>("GET", "/api/dashboard/cash-flow" + query({ end, months })),
-  spendingByCategory: (ranges: DateRanges) =>
-    request<CategorySpending[]>("GET", "/api/dashboard/spending-by-category" + query(ranges)),
+  /** includeSaving: also list "counts as saving" categories, with what was moved to savings. */
+  spendingByCategory: (ranges: DateRanges, includeSaving = false) =>
+    request<CategorySpending[]>(
+      "GET",
+      "/api/dashboard/spending-by-category" + query({ ...ranges, include_saving: includeSaving ? "true" : undefined }),
+    ),
   recurring: () => request<Recurring[]>("GET", "/api/recurring"),
   upcoming: (days: number) => request<UpcomingCharge[]>("GET", "/api/recurring/upcoming" + query({ days })),
   setRecurringIgnored: (body: Schemas["RecurringIgnore"]) => request<void>("PUT", "/api/recurring/ignored", body),
