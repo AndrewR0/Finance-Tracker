@@ -114,8 +114,8 @@ describe("indexCategories", () => {
   it("labels subcategories with their parent", () => {
     const index = indexCategories([
       {
-        id: 1, name: "Food", kind: "expense", parent_id: null,
-        subcategories: [{ id: 5, name: "Groceries", kind: "expense", parent_id: 1 }],
+        id: 1, name: "Food", kind: "expense", parent_id: null, counts_as_saving: false,
+        subcategories: [{ id: 5, name: "Groceries", kind: "expense", parent_id: 1, counts_as_saving: false }],
       },
     ]);
 

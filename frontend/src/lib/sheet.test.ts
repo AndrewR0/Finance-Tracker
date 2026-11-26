@@ -17,9 +17,9 @@ function existingAccount(id: number, name: string, closed = false): Account {
 }
 
 const TREE: CategoryTree[] = [
-  { id: 1, name: "Food", kind: "expense", parent_id: null, subcategories: [{ id: 2, name: "Groceries", kind: "expense", parent_id: 1 }] },
-  { id: 3, name: "Salary", kind: "income", parent_id: null, subcategories: [] },
-  { id: 4, name: "Moves", kind: "transfer", parent_id: null, subcategories: [] },
+  { id: 1, name: "Food", kind: "expense", parent_id: null, counts_as_saving: false, subcategories: [{ id: 2, name: "Groceries", kind: "expense", parent_id: 1, counts_as_saving: false }] },
+  { id: 3, name: "Salary", kind: "income", parent_id: null, counts_as_saving: false, subcategories: [] },
+  { id: 4, name: "Moves", kind: "transfer", parent_id: null, counts_as_saving: false, subcategories: [] },
 ];
 
 const ROWS = [

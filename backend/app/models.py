@@ -56,6 +56,10 @@ class Category(Base):
     name: Mapped[str] = mapped_column(String(100))
     kind: Mapped[CategoryKind] = mapped_column(Enum(CategoryKind, native_enum=False, values_callable=lambda obj: [e.value for e in obj]))
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"))
+    # Expense categories only. Money here is moved, not spent (Roth IRA, brokerage): it counts
+    # toward Saved instead of Spending. Set on a top-level category; its subcategories copy it,
+    # so reports can read it straight off each row without joining the parent.
+    counts_as_saving: Mapped[bool] = mapped_column(default=False, server_default=false())
 
     # Python-side links between rows. No new columns: both use parent_id.
     # remote_side tells SQLAlchemy which end is the parent, since both ends are this table.

@@ -9,7 +9,7 @@ def test_create_top_level_category(client):
     response = create(client, "Food")
 
     assert response.status_code == 201
-    assert response.json() | {"id": 0} == {"id": 0, "name": "Food", "kind": "expense", "parent_id": None}
+    assert response.json() | {"id": 0} == {"id": 0, "name": "Food", "kind": "expense", "parent_id": None, "counts_as_saving": False}
 
 
 def test_create_subcategory(client):

@@ -39,12 +39,38 @@ def income_cents():
 
 
 def spending_cents():
-    """SQL expression: how much this transaction adds to spending, as a POSITIVE number (0 if none)."""
+    """SQL expression: how much this transaction adds to spending, as a POSITIVE number (0 if none).
+
+    "Counts as saving" categories (Roth IRA, brokerage) are left out: that money was moved, not
+    spent. Because saved = income - spending, leaving it out here is what moves it into Saved.
+    """
     return case(
-        (Category.kind == CategoryKind.EXPENSE, -Transaction.amount_cents),
+        (Category.kind == CategoryKind.EXPENSE, case((Category.counts_as_saving, 0), else_=-Transaction.amount_cents)),
         (Category.kind.is_(None) & (Transaction.amount_cents < 0), -Transaction.amount_cents),
         else_=0,
     )
+
+
+def moved_to_savings_cents():
+    """SQL expression: how much this transaction moved into a "counts as saving" category (POSITIVE).
+
+    A positive amount there (money taken back out) lowers it, like a refund lowers spending.
+    """
+    return case(
+        ((Category.kind == CategoryKind.EXPENSE) & Category.counts_as_saving, -Transaction.amount_cents),
+        else_=0,
+    )
+
+
+def moved_to_savings(db: Session, start: dt.date, end: dt.date) -> int:
+    """Total moved to "counts as saving" categories from start to end, inclusive."""
+    query = (
+        select(func.coalesce(func.sum(moved_to_savings_cents()), 0))
+        .select_from(Transaction)
+        .outerjoin(Category, Transaction.category_id == Category.id)
+        .where(is_cash_flow(), Transaction.date >= start, Transaction.date <= end)
+    )
+    return db.execute(query).scalar_one()
 
 
 def income_and_spending(db: Session, start: dt.date, end: dt.date) -> tuple[int, int]:
@@ -185,7 +211,11 @@ def spending_by_category(
         return r["spending_cents"] != 0 or (r["previous_cents"] or 0) != 0
 
     rows = []
-    for top in (c for c in categories if c.parent_id is None and c.kind == CategoryKind.EXPENSE):
+    spending_categories = (
+        c for c in categories
+        if c.parent_id is None and c.kind == CategoryKind.EXPENSE and not c.counts_as_saving
+    )
+    for top in spending_categories:
         parent_row = row(top.id, top.name, now_rolled, before_rolled)
         subs = [row(s.id, s.name, now, before) for s in top.subcategories]
         parent_row["subcategories"] = sorted(

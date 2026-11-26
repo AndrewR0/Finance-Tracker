@@ -61,6 +61,8 @@ def create_category(payload: CategoryCreate, db: DbSession):
     check_parent(db, payload.parent_id, payload.kind)
 
     category = Category(name=payload.name, kind=payload.kind, parent_id=payload.parent_id)
+    if payload.parent_id is not None:
+        category.counts_as_saving = db.get(Category, payload.parent_id).counts_as_saving  # a new subcategory follows its parent
     db.add(category)
     try:
         db.commit()
@@ -88,8 +90,30 @@ def update_category(category_id: int, payload: CategoryUpdate, db: DbSession):
             )
         check_parent(db, new_parent, category.kind)
 
+    # Where it will sit after this PATCH, so the checks below see the new parent, not the old one.
+    parent_id = changes.get("parent_id", category.parent_id)
+    parent = db.get(Category, parent_id) if parent_id is not None else None
+    saving = changes.pop("counts_as_saving", None)
+    if saving is not None:
+        if category.kind != CategoryKind.EXPENSE:
+            raise HTTPException(status_code=422, detail="Only expense categories can count as saving.")
+        if parent is not None:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Set 'counts as saving' on {parent.name}; its subcategories follow it.",
+            )
+
     for field, value in changes.items():
         setattr(category, field, value)
+
+    if saving is not None:
+        category.counts_as_saving = saving
+        for sub in category.subcategories:
+            sub.counts_as_saving = saving
+    elif "parent_id" in changes:
+        # Moved: a subcategory takes its new parent's setting; a new top-level category starts off.
+        category.counts_as_saving = parent.counts_as_saving if parent is not None else False
+
     name, parent_id, kind = category.name, category.parent_id, category.kind  # before a rollback reloads them
     try:
         db.commit()

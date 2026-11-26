@@ -115,7 +115,7 @@ function spendingById(rows: CategorySpending[]): Map<number | "none", Spending> 
   return result;
 }
 
-type Category = { id: number; name: string; kind: CategoryKind; parent_id: number | null };
+type Category = { id: number; name: string; kind: CategoryKind; parent_id: number | null; counts_as_saving: boolean };
 
 type Shared = {
   spending: Map<number | "none", Spending>;
@@ -169,6 +169,11 @@ function CategoryRow({ category, hasSubcategories = false, spending, showSpendin
           <Link className="plain-link" to={`/transactions?category=${category.id}&when=${when}`} title="See these transactions">
             {category.name}
           </Link>
+          {category.counts_as_saving && (
+            <span className="muted saving-tag" title="Moved, not spent: counts toward Saved on the dashboard, not Spending">
+              {" "}· saving
+            </span>
+          )}
         </td>
         {showSpending && <SpendingCells numbers={numbers} />}
         <td className="r acct-actions">
@@ -200,7 +205,16 @@ type FormProps = { category: Category; hasSubcategories: boolean; tree: Category
 function EditCategory({ category, hasSubcategories, tree, onDone }: FormProps) {
   const [name, setName] = useState(category.name);
   const [parent, setParent] = useState(category.parent_id === null ? "" : String(category.parent_id));
-  const save = useSave(() => api.updateCategory(category.id, { name, parent_id: parent === "" ? null : Number(parent) }));
+  const [saving, setSaving] = useState(category.counts_as_saving);
+  // Only top-level expense categories have the setting; subcategories follow their parent.
+  const canBeSaving = category.kind === "expense" && parent === "";
+  const save = useSave(() =>
+    api.updateCategory(category.id, {
+      name,
+      parent_id: parent === "" ? null : Number(parent),
+      ...(canBeSaving ? { counts_as_saving: saving } : {}),
+    }),
+  );
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -232,6 +246,11 @@ function EditCategory({ category, hasSubcategories, tree, onDone }: FormProps) {
               <option key={top.id} value={top.id}>Under {top.name}</option>
             ))}
         </select>
+      )}
+      {canBeSaving && (
+        <label className="check" title="Moved, not spent (Roth IRA, brokerage): counts toward Saved, not Spending">
+          <input type="checkbox" checked={saving} onChange={(e) => setSaving(e.target.checked)} /> Counts as saving
+        </label>
       )}
       <button type="submit" className="btn-neon" disabled={save.isPending}>
         Save

@@ -619,6 +619,8 @@ export interface components {
             kind: components["schemas"]["CategoryKind"];
             /** Parent Id */
             parent_id: number | null;
+            /** Counts As Saving */
+            counts_as_saving: boolean;
         };
         /**
          * CategorySpending
@@ -648,6 +650,8 @@ export interface components {
             kind: components["schemas"]["CategoryKind"];
             /** Parent Id */
             parent_id: number | null;
+            /** Counts As Saving */
+            counts_as_saving: boolean;
             /** Subcategories */
             subcategories: components["schemas"]["CategoryRead"][];
         };
@@ -664,6 +668,8 @@ export interface components {
             name?: string;
             /** Parent Id */
             parent_id?: number | null;
+            /** Counts As Saving */
+            counts_as_saving?: boolean;
         };
         /**
          * Change
@@ -699,6 +705,8 @@ export interface components {
             spending_cents: number;
             /** Saved Cents */
             saved_cents: number;
+            /** Moved To Savings Cents */
+            moved_to_savings_cents: number;
             income_change: components["schemas"]["Change"] | null;
             spending_change: components["schemas"]["Change"] | null;
             saved_change: components["schemas"]["Change"] | null;

@@ -16,6 +16,7 @@ from app.reports import (
     cash_flow,
     change,
     income_and_spending,
+    moved_to_savings,
     net_worth,
     spending_by_category,
     spending_pace,
@@ -122,6 +123,7 @@ def summary(db: DbSession, ranges: DateRanges):
         income_cents=income,
         spending_cents=spending,
         saved_cents=income - spending,
+        moved_to_savings_cents=moved_to_savings(db, ranges.start, ranges.end),
         **changes,
     )
 

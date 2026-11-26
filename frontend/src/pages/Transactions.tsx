@@ -98,8 +98,16 @@ export function Transactions() {
             </optgroup>
           ))}
         </select>
-        <span className="totals">
-          In <b className="num up">{formatMoney0(totals.in)}</b> · Out <b className="num">{formatMoney0(totals.out)}</b> · Net{" "}
+        <span
+          className="totals"
+          title={
+            "Money that moved in and out of your accounts, by sign, for the transactions listed. " +
+            "Refunds count as deposits and Roth/investment contributions as withdrawals. " +
+            "Transfers between your own accounts are left out. " +
+            "For income, spending and saved, see the Dashboard."
+          }
+        >
+          Deposits <b className="num up">{formatMoney0(totals.in)}</b> · Withdrawals <b className="num">{formatMoney0(totals.out)}</b> · Net flow{" "}
           <b className={`num ${totals.in - totals.out >= 0 ? "up" : "down"}`}>
             {formatMoney0(totals.in - totals.out, { sign: true })}
           </b>

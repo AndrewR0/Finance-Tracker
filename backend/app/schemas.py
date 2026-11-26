@@ -79,6 +79,8 @@ class CategoryUpdate(BaseModel):
 
     name: Name = None
     parent_id: int | None = None
+    # Top-level expense categories only; their subcategories follow along.
+    counts_as_saving: bool = None
 
 
 class CategoryDeleted(BaseModel):
@@ -92,6 +94,7 @@ class CategoryRead(BaseModel):
     name: str
     kind: CategoryKind
     parent_id: int | None
+    counts_as_saving: bool  # moved, not spent: counts toward Saved instead of Spending
 
 
 class CategoryTree(CategoryRead):
@@ -197,6 +200,8 @@ class DashboardSummary(BaseModel):
     income_cents: int
     spending_cents: int  # positive number; refunds reduce it
     saved_cents: int  # income - spending; negative if you spent more than you earned
+    # The part of saved_cents that went to "counts as saving" categories (Roth IRA, brokerage).
+    moved_to_savings_cents: int
     # These three are None unless compare_start and compare_end were given.
     income_change: Change | None
     spending_change: Change | None

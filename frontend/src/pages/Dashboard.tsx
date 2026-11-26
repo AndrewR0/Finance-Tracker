@@ -156,7 +156,10 @@ function KpiCards({ summary, period }: { summary: Summary | undefined; period: P
       <div className="card kpi">
         <div className="lbl">Saved</div>
         <div className={`val ${summary.saved_cents < 0 ? "down" : ""}`}>{formatMoney0(summary.saved_cents)}</div>
-        <div className="delta">{savedRate === null ? "No income yet" : `${savedRate}% of income`}</div>
+        <div className="delta">
+          {savedRate === null ? "No income yet" : `${savedRate}% of income`}
+          {summary.moved_to_savings_cents !== 0 && ` · ${formatMoney0(summary.moved_to_savings_cents)} invested`}
+        </div>
       </div>
     </>
   );
