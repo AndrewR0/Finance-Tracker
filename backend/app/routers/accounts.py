@@ -8,8 +8,9 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.balances import get_balances, get_investment_breakdowns
+from app.balances import get_account_values, get_cash, get_investment_breakdowns
 from app.clock import Today
+from app.holdings import get_positions
 from app.db import get_db
 from app.models import Account, AccountType, Transaction
 from app.schemas import (
@@ -34,14 +35,27 @@ def list_accounts(db: DbSession, as_of: dt.date | None = None):
     # Open accounts first (closed_at IS NULL sorts first), then alphabetical.
     query = select(Account).order_by(Account.closed_at.is_not(None), Account.name)
     accounts = db.scalars(query).all()
-    balances = get_balances(db, as_of)
+    balances = get_account_values(db, as_of)
     investing = [a.id for a in accounts if a.type in (AccountType.BROKERAGE, AccountType.RETIREMENT)]
     breakdowns = get_investment_breakdowns(db, investing, as_of)
+    # Accounts with holdings: cost basis and gain come from their lots.
+    lots: dict[int, tuple[int, int]] = {}
+    for position in get_positions(db, as_of):
+        cost, value = lots.get(position.account_id, (0, 0))
+        lots[position.account_id] = (cost + position.cost_cents, value + position.value_cents)
+
+    def investment(account_id: int) -> InvestmentRead | None:
+        if account_id not in breakdowns:
+            return None
+        cost, value = lots.get(account_id, (None, None))
+        return InvestmentRead(**vars(breakdowns[account_id]), cost_basis_cents=cost,
+                              unrealized_gain_cents=None if cost is None else value - cost)
+
     return [
         AccountWithBalance(
             **AccountRead.model_validate(account).model_dump(),
             balance_cents=balances.get(account.id, 0),  # no transactions yet = 0
-            investment=InvestmentRead(**vars(breakdowns[account.id])) if account.id in breakdowns else None,
+            investment=investment(account.id),
         )
         for account in accounts
     ]
@@ -106,7 +120,8 @@ def reconcile_account(account_id: int, payload: ReconcileRequest, db: DbSession)
     if account.closed_at is not None:
         raise HTTPException(status_code=409, detail=f"{account.name} is closed. Reopen it to reconcile.")
 
-    previous = get_balances(db, payload.date).get(account.id, 0)
+    # Cash only: holdings get their value from prices, so "Update balance" sets the cash beside them.
+    previous = get_cash(db, payload.date).get(account.id, 0)
     difference = payload.balance_cents - previous
     if difference == 0:
         return ReconcileResult(previous_balance_cents=previous, balance_cents=previous, adjustment=None)
@@ -133,7 +148,7 @@ def close_account(account_id: int, db: DbSession, today: Today):
     account = get_account(db, account_id)
     if account.closed_at is not None:
         return account  # already closed: closing again changes nothing
-    balance = get_balances(db).get(account.id, 0)
+    balance = get_account_values(db).get(account.id, 0)
     if balance != 0:
         raise HTTPException(
             status_code=409,

@@ -501,6 +501,132 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/holdings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Holdings
+         * @description Every investment account that has holdings, biggest holding first within each.
+         */
+        get: operations["list_holdings_api_holdings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{account_id}/holdings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set Up Holdings
+         * @description Start tracking an account's holdings from your provider's cost basis page.
+         *
+         *     Each holding becomes an opening lot dated `date`, and its market value sets the first price.
+         *     One balance adjustment then brings the account's cash to `cash_cents`, so the money that
+         *     past balance updates already counted isn't counted again by the holdings. Nothing in
+         *     the account's history is changed.
+         */
+        post: operations["set_up_holdings_api_accounts__account_id__holdings_post"];
+        /**
+         * Undo Holdings Setup
+         * @description Remove the opening lots and the setup's balance adjustment, so you can set it up again.
+         */
+        delete: operations["undo_holdings_setup_api_accounts__account_id__holdings_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/securities/{security_id}/prices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Price
+         * @description Type in a price, for a security with no automatic prices (or to correct one).
+         */
+        post: operations["add_price_api_securities__security_id__prices_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/prices/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Price Status */
+        get: operations["get_price_status_api_prices_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/prices/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh Prices Now
+         * @description Fetch the latest closing prices now (the app also does this by itself every few hours).
+         */
+        post: operations["refresh_prices_now_api_prices_refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/securities/{security_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Security
+         * @description Switch between automatic and typed-in prices, e.g. a 401k trust Yahoo doesn't know.
+         */
+        patch: operations["update_security_api_securities__security_id__patch"];
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -529,6 +655,27 @@ export interface components {
             type: components["schemas"]["AccountType"];
             /** In Net Worth */
             in_net_worth?: boolean | null;
+        };
+        /** AccountHoldings */
+        AccountHoldings: {
+            /** Account Id */
+            account_id: number;
+            /** Account Name */
+            account_name: string;
+            /** In Net Worth */
+            in_net_worth: boolean;
+            /** Cash Cents */
+            cash_cents: number;
+            /** Value Cents */
+            value_cents: number;
+            /** Cost Basis Cents */
+            cost_basis_cents: number;
+            /** Gain Cents */
+            gain_cents: number;
+            /** Can Undo */
+            can_undo: boolean;
+            /** Holdings */
+            holdings: components["schemas"]["HoldingRead"][];
         };
         /** AccountRead */
         AccountRead: {
@@ -800,6 +947,68 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /**
+         * HoldingInput
+         * @description One holding, copied from your provider's cost basis page.
+         */
+        HoldingInput: {
+            /** Ticker */
+            ticker: string;
+            /** Name */
+            name: string;
+            kind: components["schemas"]["SecurityKind"];
+            /** @default yfinance */
+            price_source: components["schemas"]["PriceSource"];
+            /** Shares */
+            shares: number | string;
+            /** Cost Basis Cents */
+            cost_basis_cents: number;
+            /** Market Value Cents */
+            market_value_cents: number;
+        };
+        /** HoldingRead */
+        HoldingRead: {
+            /** Security Id */
+            security_id: number;
+            /** Ticker */
+            ticker: string;
+            /** Name */
+            name: string;
+            kind: components["schemas"]["SecurityKind"];
+            price_source: components["schemas"]["PriceSource"];
+            /** Shares */
+            shares: number;
+            /** Cost Basis Cents */
+            cost_basis_cents: number;
+            /** Price */
+            price: number | null;
+            /** Price Date */
+            price_date: string | null;
+            /** Value Cents */
+            value_cents: number;
+            /** Gain Cents */
+            gain_cents: number;
+            /** Realized Cents */
+            realized_cents: number;
+        };
+        /**
+         * HoldingsSetup
+         * @description Start tracking an account's holdings: one opening lot per holding, all on `date`.
+         */
+        HoldingsSetup: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /**
+             * Cash Cents
+             * @default 0
+             */
+            cash_cents: number;
+            /** Holdings */
+            holdings: components["schemas"]["HoldingInput"][];
+        };
         /** ImportCommitRequest */
         ImportCommitRequest: {
             /**
@@ -894,6 +1103,10 @@ export interface components {
             contributed_cents: number;
             /** Gain Cents */
             gain_cents: number;
+            /** Cost Basis Cents */
+            cost_basis_cents: number | null;
+            /** Unrealized Gain Cents */
+            unrealized_gain_cents: number | null;
         };
         /** NewAccount */
         NewAccount: {
@@ -951,6 +1164,50 @@ export interface components {
             previous_date: string | null;
             /** Next Date */
             next_date: string | null;
+        };
+        /** PriceInput */
+        PriceInput: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Price */
+            price: number | string;
+        };
+        /** PriceRead */
+        PriceRead: {
+            /** Security Id */
+            security_id: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Price */
+            price: number;
+            source: components["schemas"]["PriceSource"];
+        };
+        /**
+         * PriceSource
+         * @enum {string}
+         */
+        PriceSource: "yfinance" | "manual";
+        /**
+         * PriceStatus
+         * @description How fresh automatic prices are, for the Investments page.
+         */
+        PriceStatus: {
+            /** Refreshed At */
+            refreshed_at: string | null;
+            /** Updated */
+            updated: number;
+            /** Failed */
+            failed: {
+                [key: string]: string;
+            };
+            /** Prices As Of */
+            prices_as_of: string | null;
         };
         /**
          * ReconcileRequest
@@ -1015,6 +1272,18 @@ export interface components {
             next_date: string;
             /** Ignored */
             ignored: boolean;
+        };
+        /**
+         * SecurityKind
+         * @enum {string}
+         */
+        SecurityKind: "fund" | "stock" | "crypto" | "other";
+        /**
+         * SecurityUpdate
+         * @description PATCH body: switch a security between automatic and typed-in prices.
+         */
+        SecurityUpdate: {
+            price_source: components["schemas"]["PriceSource"];
         };
         /** SpendingPace */
         SpendingPace: {
@@ -2266,6 +2535,198 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["GoalRead"][];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_holdings_api_holdings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountHoldings"][];
+                };
+            };
+        };
+    };
+    set_up_holdings_api_accounts__account_id__holdings_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HoldingsSetup"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountHoldings"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    undo_holdings_setup_api_accounts__account_id__holdings_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_price_api_securities__security_id__prices_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                security_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PriceInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_price_status_api_prices_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceStatus"];
+                };
+            };
+        };
+    };
+    refresh_prices_now_api_prices_refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceStatus"];
+                };
+            };
+        };
+    };
+    update_security_api_securities__security_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                security_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SecurityUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

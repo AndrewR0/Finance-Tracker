@@ -1796,3 +1796,46 @@ table.names tr.child td:first-child {
   font-size: 12.5px;
   margin-top: 2px;
 }
+
+/* Investments page */
+.holdtable .total td {
+  border-top: 1px solid var(--line);
+  font-weight: 600;
+}
+.setup-table .input,
+.setup-table .select {
+  width: 100%;
+  min-width: 70px;
+}
+.setup-table td {
+  padding: 4px;
+}
+@media (max-width: 760px) {
+  .setup-table {
+    display: block;
+    overflow-x: auto;
+  }
+}
+.form-card.setup-card {
+  max-width: none; /* eight columns need the room */
+}
+.setup-table th {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.prices-bar {
+  padding: 10px 14px;
+}
+.prices-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+.price-warning {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--bad);
+}

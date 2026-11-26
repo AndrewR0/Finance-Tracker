@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.balances import get_balances
+from app.balances import get_account_values
 from app.clock import Today
 from app.db import get_db
 from app.goals import PACE_MONTHS, GoalStatus, Progress, monthly_pace, progress
@@ -28,8 +28,8 @@ def read_all(db: Session, today: dt.date) -> list[GoalRead]:
     goals = db.scalars(
         select(Goal).order_by(Goal.archived_at.is_not(None), Goal.position, Goal.id)
     ).all()
-    balances = get_balances(db)
-    balances_then = get_balances(db, add_months(today, -PACE_MONTHS))
+    balances = get_account_values(db)
+    balances_then = get_account_values(db, add_months(today, -PACE_MONTHS))
 
     by_account: dict[int, list[Goal]] = defaultdict(list)
     for goal in goals:

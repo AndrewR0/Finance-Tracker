@@ -20,7 +20,12 @@ def update_balance(client, account_id, balance_cents, date):
 
 
 def account(client, account_id, **params):
-    return next(a for a in client.get("/api/accounts", params=params).json() if a["id"] == account_id)
+    found = next(a for a in client.get("/api/accounts", params=params).json() if a["id"] == account_id)
+    if found["investment"]:
+        # These two are only filled in once the account has holdings (tests/test_holdings.py).
+        assert found["investment"].pop("cost_basis_cents") is None
+        assert found["investment"].pop("unrealized_gain_cents") is None
+    return found
 
 
 def test_contributions_then_a_balance_update(client):

@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.holdings import cash_from_trades, holdings_values
 from app.models import Transaction
 
 
@@ -84,4 +85,26 @@ def get_investment_breakdowns(
             parts.starting_cents += cents
         else:
             parts.gain_cents += cents
+    return result
+
+
+def get_cash(db: Session, as_of: dt.date | None = None) -> dict[int, int]:
+    """{account_id: cash}: transactions, minus money spent on buys, plus money from sells.
+
+    For an account without trades this is just get_balances().
+    """
+    result = dict(get_balances(db, as_of))
+    for account_id, cents in cash_from_trades(db, as_of).items():
+        result[account_id] = result.get(account_id, 0) + cents
+    return result
+
+
+def get_account_values(db: Session, as_of: dt.date | None = None) -> dict[int, int]:
+    """{account_id: what it's worth}: cash plus the market value of its holdings.
+
+    This is "the balance" everywhere the app shows or adds one up (net worth, Accounts, goals).
+    """
+    result = get_cash(db, as_of)
+    for account_id, cents in holdings_values(db, as_of).items():
+        result[account_id] = result.get(account_id, 0) + cents
     return result

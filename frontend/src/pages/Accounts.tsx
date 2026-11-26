@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 
 import { api, type Account, type AccountType } from "../api/client";
 import { useAccounts, useGoals, useSave } from "../api/hooks";
 import { todayISO } from "../lib/dates";
 import { formatMoney, formatMoney0, parseMoney } from "../lib/money";
+import { gainPercent } from "../lib/shares";
 
 const TYPE_LABELS: Record<AccountType, string> = {
   checking: "Checking",
@@ -230,7 +232,11 @@ function AccountRow({ account }: { account: Account }) {
             <>
               <button className="btn small" onClick={() => setReconciling((open) => !open)}>
                 {/* Same thing underneath: a retirement balance is a snapshot copied from the provider. */}
-                {account.type === "retirement" ? "Update balance" : "Reconcile"}
+                {account.investment?.cost_basis_cents != null
+                  ? "Update cash" // holdings get their value from prices; this sets the cash beside them
+                  : account.type === "retirement"
+                    ? "Update balance"
+                    : "Reconcile"}
               </button>
               <button
                 className="btn small"
@@ -318,11 +324,28 @@ function ReconcileRow({ account, onDone }: { account: Account; onDone: () => voi
 
 type Investment = NonNullable<Account["investment"]>;
 
+/** Once an account has holdings: "Basis $X · Gain ±$Y (±Z%)" from its lots, linking to Investments. */
+function HoldingsLine({ investment }: { investment: Investment }) {
+  const basis = investment.cost_basis_cents ?? 0;
+  const gain = investment.unrealized_gain_cents ?? 0;
+  const percent = gainPercent(gain, basis);
+  return (
+    <div className="muted invest-line" title="From your holdings' cost basis and latest prices">
+      <Link className="plain-link" to="/investments">Basis {formatMoney0(basis)}</Link> · Gain{" "}
+      <span className={gain > 0 ? "up" : gain < 0 ? "down" : ""}>
+        {formatMoney0(gain, { sign: true })}
+        {percent && ` (${percent})`}
+      </span>
+    </div>
+  );
+}
+
 /**
  * "Put in $X · Gain +$Y (+Z%)" under a Brokerage or Retirement account.
  * Put in = the opening snapshot + transfers; gain = later balance updates (see app/balances.py).
  */
 function InvestmentLine({ investment }: { investment: Investment }) {
+  if (investment.cost_basis_cents !== null) return <HoldingsLine investment={investment} />;
   const putIn = investment.starting_cents + investment.contributed_cents;
   const gain = investment.gain_cents;
   const percent = putIn > 0 ? (gain / putIn) * 100 : null;

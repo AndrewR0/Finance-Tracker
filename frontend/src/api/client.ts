@@ -27,6 +27,11 @@ export type UpcomingCharge = Schemas["UpcomingCharge"];
 export type Cadence = Schemas["Cadence"];
 export type Goal = Schemas["GoalRead"];
 export type GoalStatus = Schemas["GoalStatus"];
+export type AccountHoldings = Schemas["AccountHoldings"];
+export type Holding = Schemas["HoldingRead"];
+export type HoldingInput = Schemas["HoldingInput"];
+export type SecurityKind = Schemas["SecurityKind"];
+export type PriceStatus = Schemas["PriceStatus"];
 
 /** The backend answered with an error. message is FastAPI's "detail", made readable. */
 export class ApiError extends Error {
@@ -138,6 +143,18 @@ export const api = {
       "/api/dashboard/spending-by-category" + query({ ...ranges, include_saving: includeSaving ? "true" : undefined }),
     ),
   recurring: () => request<Recurring[]>("GET", "/api/recurring"),
+
+  holdings: () => request<AccountHoldings[]>("GET", "/api/holdings"),
+  setUpHoldings: (accountId: number, body: Schemas["HoldingsSetup"]) =>
+    request<AccountHoldings>("POST", `/api/accounts/${accountId}/holdings`, body),
+  undoHoldings: (accountId: number) => request<void>("DELETE", `/api/accounts/${accountId}/holdings`),
+  /** price: dollars per share as text, like "130.5" (the API parses it without floats). */
+  addPrice: (securityId: number, body: { date: string; price: string }) =>
+    request<Schemas["PriceRead"]>("POST", `/api/securities/${securityId}/prices`, body),
+  priceStatus: () => request<PriceStatus>("GET", "/api/prices/status"),
+  refreshPrices: () => request<PriceStatus>("POST", "/api/prices/refresh"),
+  updateSecurity: (securityId: number, body: Schemas["SecurityUpdate"]) =>
+    request<void>("PATCH", `/api/securities/${securityId}`, body),
   upcoming: (days: number) => request<UpcomingCharge[]>("GET", "/api/recurring/upcoming" + query({ days })),
   setRecurringIgnored: (body: Schemas["RecurringIgnore"]) => request<void>("PUT", "/api/recurring/ignored", body),
 

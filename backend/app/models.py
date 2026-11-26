@@ -185,3 +185,78 @@ class Goal(Base):
     # so the goals after it on the same account move up.
     archived_at: Mapped[datetime | None]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+# ---- Investments (feature 5) ----
+#
+# Holdings are never stored: app/holdings.py derives them from trades, FIFO.
+# No floats: shares are whole units of 1/100,000,000 of a share (bitcoin's 8 decimals),
+# prices are whole millionths of a dollar, money is cents.
+
+SHARE_UNITS = 100_000_000  # units per share
+PRICE_UNITS = 1_000_000  # price units per dollar
+
+
+class SecurityKind(enum.StrEnum):
+    FUND = "fund"
+    STOCK = "stock"
+    CRYPTO = "crypto"
+    OTHER = "other"
+
+
+class PriceSource(enum.StrEnum):
+    YFINANCE = "yfinance"  # has a public ticker; prices fetched automatically (step 2)
+    MANUAL = "manual"  # e.g. a 401k fund with no public ticker: you type the price in
+
+
+class Security(Base):
+    """Something you can own: a fund, a stock, bitcoin."""
+
+    __tablename__ = "securities"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # NOCASE, like payee names: "vtsax" and "VTSAX" are the same security.
+    ticker: Mapped[str] = mapped_column(String(20, collation="NOCASE"), unique=True)
+    name: Mapped[str] = mapped_column(String(100))
+    kind: Mapped[SecurityKind] = mapped_column(Enum(SecurityKind, native_enum=False, values_callable=lambda obj: [e.value for e in obj]))
+    price_source: Mapped[PriceSource] = mapped_column(Enum(PriceSource, native_enum=False, values_callable=lambda obj: [e.value for e in obj]))
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+class TradeKind(enum.StrEnum):
+    # A holding you already had when you started tracking it, at your provider's cost basis.
+    # Unlike a buy, it doesn't use the account's cash: that money was already in the account.
+    OPENING = "opening"
+    BUY = "buy"
+    SELL = "sell"
+
+
+class Trade(Base):
+    """One opening lot, buy or sell. Both amounts are positive; kind says which way they go."""
+
+    __tablename__ = "trades"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"), index=True)
+    security_id: Mapped[int] = mapped_column(ForeignKey("securities.id"))
+    date: Mapped[dt.date]
+    kind: Mapped[TradeKind] = mapped_column(Enum(TradeKind, native_enum=False, values_callable=lambda obj: [e.value for e in obj]))
+    shares: Mapped[int]  # units of 1/SHARE_UNITS of a share
+    # Cost basis for opening and buy (fees included), proceeds for sell (fees taken off).
+    amount_cents: Mapped[int]
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+    security: Mapped[Security] = relationship()
+
+
+class Price(Base):
+    """One security's closing price on one day."""
+
+    __tablename__ = "prices"
+    __table_args__ = (UniqueConstraint("security_id", "date", name="uq_price_per_day"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    security_id: Mapped[int] = mapped_column(ForeignKey("securities.id"))
+    date: Mapped[dt.date]
+    price: Mapped[int]  # units of 1/PRICE_UNITS of a dollar
+    source: Mapped[PriceSource] = mapped_column(Enum(PriceSource, native_enum=False, values_callable=lambda obj: [e.value for e in obj]))

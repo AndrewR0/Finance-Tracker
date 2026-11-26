@@ -4,6 +4,7 @@ Every test gets a brand-new, empty, in-memory database, so tests never touch
 finance.db or each other.
 """
 
+import os
 from datetime import date
 
 import pytest
@@ -12,7 +13,9 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.clock import get_today
+os.environ["FINANCE_PRICE_REFRESH"] = "off"  # before the app is imported: no network in tests
+
+from app.clock import get_today  # noqa: E402
 from app.db import Base, enable_sqlite_foreign_keys, get_db
 from app.main import app
 

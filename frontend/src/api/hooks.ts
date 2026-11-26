@@ -16,6 +16,14 @@ export function useAccounts() {
   return useQuery({ queryKey: ["accounts"], queryFn: api.accounts });
 }
 
+export function useHoldings() {
+  return useQuery({ queryKey: ["holdings"], queryFn: api.holdings });
+}
+
+export function usePriceStatus() {
+  return useQuery({ queryKey: ["price-status"], queryFn: api.priceStatus });
+}
+
 export function useCategories(kind?: CategoryKind) {
   return useQuery({ queryKey: ["categories", kind ?? "all"], queryFn: () => api.categories(kind) });
 }

@@ -6,12 +6,13 @@ chooses an id or created_at, so those fields only appear on the "Read" shape.
 
 import datetime as dt
 from datetime import datetime
+from decimal import Decimal
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StringConstraints
 
 from app.goals import GoalStatus
-from app.models import AccountType, CategoryKind
+from app.models import AccountType, CategoryKind, PriceSource, SecurityKind
 from app.periods import PeriodKind
 from app.recurring import Cadence
 
@@ -58,6 +59,9 @@ class InvestmentRead(BaseModel):
     starting_cents: int  # the opening balance snapshot (before the first transfer)
     contributed_cents: int  # transfers in minus transfers out
     gain_cents: int  # later balance updates (market moves), dividends, fees
+    # Once the account has holdings (Investments), these come from its lots instead.
+    cost_basis_cents: int | None  # what the shares still held cost
+    unrealized_gain_cents: int | None  # their market value minus that cost
 
 
 class AccountWithBalance(AccountRead):
@@ -422,3 +426,88 @@ class GoalOrder(BaseModel):
     """Every goal id, in the order they should fill."""
 
     ids: Annotated[list[int], Field(min_length=1)]
+
+
+# ---- Investments ----
+
+Ticker = Annotated[str, StringConstraints(strip_whitespace=True, to_upper=True, min_length=1, max_length=20)]
+# Sent as a string ("0.03841207") so no float rounding happens on the way in.
+Shares = Annotated[Decimal, Field(gt=0, max_digits=20, decimal_places=8)]
+
+
+class HoldingInput(BaseModel):
+    """One holding, copied from your provider's cost basis page."""
+
+    ticker: Ticker
+    name: Name
+    kind: SecurityKind
+    price_source: PriceSource = PriceSource.YFINANCE  # manual: no public ticker (some 401k funds)
+    shares: Shares
+    cost_basis_cents: Annotated[StrictInt, Field(ge=0)]
+    market_value_cents: Annotated[StrictInt, Field(ge=0)]  # today's value; sets the first price
+
+
+class HoldingsSetup(BaseModel):
+    """Start tracking an account's holdings: one opening lot per holding, all on `date`."""
+
+    date: dt.date
+    cash_cents: StrictInt = 0  # uninvested cash in the account (a settlement fund counts as a holding)
+    holdings: Annotated[list[HoldingInput], Field(min_length=1)]
+
+
+class HoldingRead(BaseModel):
+    security_id: int
+    ticker: str
+    name: str
+    kind: SecurityKind
+    price_source: PriceSource
+    shares: int  # units of 1/100,000,000 of a share
+    cost_basis_cents: int
+    price: int | None  # units of 1/1,000,000 of a dollar; None until there's a price
+    price_date: dt.date | None
+    value_cents: int
+    gain_cents: int  # unrealized: value - cost basis
+    realized_cents: int  # locked in by sells
+
+
+class AccountHoldings(BaseModel):
+    account_id: int
+    account_name: str
+    in_net_worth: bool
+    cash_cents: int
+    value_cents: int  # cash + holdings
+    cost_basis_cents: int
+    gain_cents: int  # unrealized, all holdings
+    can_undo: bool  # only opening lots so far, so the setup can be undone
+    holdings: list[HoldingRead]
+
+
+class PriceInput(BaseModel):
+    date: dt.date
+    price: Annotated[Decimal, Field(gt=0, max_digits=18, decimal_places=6)]  # dollars per share, as a string
+
+
+class PriceRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    security_id: int
+    date: dt.date
+    price: int  # units of 1/1,000,000 of a dollar
+    source: PriceSource
+
+
+class PriceStatus(BaseModel):
+    """How fresh automatic prices are, for the Investments page."""
+
+    refreshed_at: datetime | None  # the latest refresh since the app started; None if none yet
+    updated: int  # prices that refresh added or changed
+    failed: dict[str, str]  # ticker -> what went wrong
+    prices_as_of: dt.date | None  # newest automatic price
+
+
+class SecurityUpdate(BaseModel):
+    """PATCH body: switch a security between automatic and typed-in prices."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    price_source: PriceSource

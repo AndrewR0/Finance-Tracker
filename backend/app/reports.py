@@ -11,7 +11,7 @@ from itertools import accumulate
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
-from app.balances import get_balances
+from app.balances import get_account_values
 from app.models import Account, AccountType, Category, CategoryKind, Transaction
 from app.periods import Period, PeriodKind, bounds
 
@@ -356,4 +356,4 @@ def net_worth(db: Session, as_of: dt.date) -> int:
     Accounts switched out of net worth (401k, Roth IRA: money you can't reach yet) are left out.
     """
     left_out = set(db.scalars(select(Account.id).where(Account.in_net_worth.is_(False))))
-    return sum(cents for account_id, cents in get_balances(db, as_of).items() if account_id not in left_out)
+    return sum(cents for account_id, cents in get_account_values(db, as_of).items() if account_id not in left_out)
