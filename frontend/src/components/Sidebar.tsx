@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { NavLink } from "react-router-dom";
+import { useEffect, useRef, type ReactNode } from "react";
+import { NavLink, useLocation } from "react-router-dom";
 
 const ICONS: Record<string, ReactNode> = {
   dashboard: (
@@ -39,13 +39,25 @@ const LINKS: { to: string; label: string; icon: string; soon?: boolean }[] = [
 ];
 
 export function Sidebar() {
+  // On a phone the nav is a strip you swipe sideways. Keep the current page's link in view,
+  // so opening Goals (say) from a link elsewhere doesn't leave it hidden off the edge.
+  const nav = useRef<HTMLElement>(null);
+  const { pathname } = useLocation();
+  useEffect(() => {
+    const strip = nav.current;
+    const link = strip?.querySelector<HTMLElement>("a.on");
+    if (!strip || !link || strip.scrollWidth <= strip.clientWidth) return; // desktop: nothing to scroll
+    const offset = link.getBoundingClientRect().left - strip.getBoundingClientRect().left;
+    strip.scrollTo({ left: strip.scrollLeft + offset - (strip.clientWidth - link.offsetWidth) / 2 });
+  }, [pathname]);
+
   return (
     <aside className="side">
       <div className="brand">
         <i />
         Finance Tracker
       </div>
-      <nav className="nav">
+      <nav className="nav" ref={nav}>
         {LINKS.map((link) => (
           <NavLink key={link.to} to={link.to} end={link.to === "/"} className={({ isActive }) => (isActive ? "on" : "")}>
             <svg viewBox="0 0 24 24">{ICONS[link.icon]}</svg>

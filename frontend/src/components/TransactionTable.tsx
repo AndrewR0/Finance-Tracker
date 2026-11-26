@@ -75,7 +75,7 @@ export function TransactionTable({ rows, accounts, categories, variant }: Props)
   if (variant === "recent") {
     return (
       <div className="table-scroll">
-        <table style={{ marginTop: 6 }}>
+        <table className="txtable recent" style={{ marginTop: 6 }}>
           <tbody>
             {rows.length === 0 && (
               <tr className="empty-row">
@@ -103,7 +103,7 @@ export function TransactionTable({ rows, accounts, categories, variant }: Props)
   return (
     // Scrolls sideways inside its card when the window is too narrow for the table.
     <div className="table-scroll">
-      <table>
+      <table className="txtable">
         <thead>
           <tr>
             <th>Payee</th>

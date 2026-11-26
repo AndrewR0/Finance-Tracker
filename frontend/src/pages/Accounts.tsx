@@ -66,7 +66,7 @@ export function Accounts() {
       </div>
 
       <div className="card" style={{ padding: "4px 6px" }}>
-        <table>
+        <table className="accttable">
           <thead>
             <tr>
               <th>Account</th>
