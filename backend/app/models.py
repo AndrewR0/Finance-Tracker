@@ -4,7 +4,7 @@ import datetime as dt
 import enum
 from datetime import datetime
 
-from sqlalchemy import Enum, ForeignKey, Index, String, UniqueConstraint, false, func, text
+from sqlalchemy import Enum, ForeignKey, Index, String, UniqueConstraint, false, func, text, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -18,6 +18,7 @@ class AccountType(enum.StrEnum):
     CREDIT_CARD = "credit_card"
     BROKERAGE = "brokerage"
     CASH = "cash"
+    RETIREMENT = "retirement"  # 401k, Roth IRA: balance snapshots, left out of net worth by default
 
 
 class Account(Base):
@@ -32,6 +33,8 @@ class Account(Base):
     type: Mapped[AccountType] = mapped_column(Enum(AccountType, native_enum=False, values_callable=lambda obj: [e.value for e in obj]))
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     closed_at: Mapped[datetime | None] = mapped_column()
+    # False keeps the balance out of net worth: money you can't reach yet (401k, Roth IRA).
+    in_net_worth: Mapped[bool] = mapped_column(default=True, server_default=true())
 
 
 class CategoryKind(enum.StrEnum):

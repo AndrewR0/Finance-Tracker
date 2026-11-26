@@ -8,15 +8,16 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.balances import get_balances
+from app.balances import get_balances, get_investment_breakdowns
 from app.clock import Today
 from app.db import get_db
-from app.models import Account, Transaction
+from app.models import Account, AccountType, Transaction
 from app.schemas import (
     AccountCreate,
     AccountRead,
     AccountUpdate,
     AccountWithBalance,
+    InvestmentRead,
     ReconcileRequest,
     ReconcileResult,
 )
@@ -34,10 +35,13 @@ def list_accounts(db: DbSession, as_of: dt.date | None = None):
     query = select(Account).order_by(Account.closed_at.is_not(None), Account.name)
     accounts = db.scalars(query).all()
     balances = get_balances(db, as_of)
+    investing = [a.id for a in accounts if a.type in (AccountType.BROKERAGE, AccountType.RETIREMENT)]
+    breakdowns = get_investment_breakdowns(db, investing, as_of)
     return [
         AccountWithBalance(
             **AccountRead.model_validate(account).model_dump(),
             balance_cents=balances.get(account.id, 0),  # no transactions yet = 0
+            investment=InvestmentRead(**vars(breakdowns[account.id])) if account.id in breakdowns else None,
         )
         for account in accounts
     ]
@@ -45,7 +49,10 @@ def list_accounts(db: DbSession, as_of: dt.date | None = None):
 
 @router.post("", response_model=AccountRead, status_code=status.HTTP_201_CREATED)
 def create_account(payload: AccountCreate, db: DbSession):
-    account = Account(name=payload.name, type=payload.type)
+    in_net_worth = payload.in_net_worth
+    if in_net_worth is None:
+        in_net_worth = payload.type != AccountType.RETIREMENT  # money you can't touch yet stays out
+    account = Account(name=payload.name, type=payload.type, in_net_worth=in_net_worth)
     db.add(account)
     try:
         db.commit()

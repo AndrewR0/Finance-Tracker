@@ -12,7 +12,7 @@ from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from app.balances import get_balances
-from app.models import Category, CategoryKind, Transaction
+from app.models import Account, AccountType, Category, CategoryKind, Transaction
 from app.periods import Period, PeriodKind, bounds
 
 
@@ -62,15 +62,30 @@ def moved_to_savings_cents():
     )
 
 
+# Accounts where money you move in counts as "invested" on the dashboard.
+INVESTMENT_ACCOUNT_TYPES = (AccountType.BROKERAGE, AccountType.RETIREMENT)
+
+
 def moved_to_savings(db: Session, start: dt.date, end: dt.date) -> int:
-    """Total moved to "counts as saving" categories from start to end, inclusive."""
-    query = (
+    """Total invested from start to end, inclusive. Two ways money gets there:
+
+    - transfers into Brokerage or Retirement accounts (minus transfers back out). A move
+      between two such accounts adds +x and -x, so it cancels out by itself.
+    - expenses in "counts as saving" categories (older entries, before those accounts existed).
+    """
+    in_dates = (Transaction.date >= start) & (Transaction.date <= end)
+    by_category = db.execute(
         select(func.coalesce(func.sum(moved_to_savings_cents()), 0))
         .select_from(Transaction)
         .outerjoin(Category, Transaction.category_id == Category.id)
-        .where(is_cash_flow(), Transaction.date >= start, Transaction.date <= end)
-    )
-    return db.execute(query).scalar_one()
+        .where(is_cash_flow(), in_dates)
+    ).scalar_one()
+    by_transfer = db.execute(
+        select(func.coalesce(func.sum(Transaction.amount_cents), 0))
+        .join(Account, Transaction.account_id == Account.id)
+        .where(Transaction.transfer_id.is_not(None), Account.type.in_(INVESTMENT_ACCOUNT_TYPES), in_dates)
+    ).scalar_one()
+    return by_category + by_transfer
 
 
 def income_and_spending(db: Session, start: dt.date, end: dt.date) -> tuple[int, int]:
@@ -336,5 +351,9 @@ def change(now: int, before: int) -> dict:
 
 
 def net_worth(db: Session, as_of: dt.date) -> int:
-    """Everything you have minus everything you owe, at the end of as_of."""
-    return sum(get_balances(db, as_of).values())
+    """Everything you have minus everything you owe, at the end of as_of.
+
+    Accounts switched out of net worth (401k, Roth IRA: money you can't reach yet) are left out.
+    """
+    left_out = set(db.scalars(select(Account.id).where(Account.in_net_worth.is_(False))))
+    return sum(cents for account_id, cents in get_balances(db, as_of).items() if account_id not in left_out)

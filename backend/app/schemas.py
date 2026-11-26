@@ -22,6 +22,8 @@ Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max
 class AccountCreate(BaseModel):
     name: Name
     type: AccountType
+    # Leave out for the default: retirement accounts are left out of net worth, the rest count.
+    in_net_worth: bool | None = None
 
 
 class AccountUpdate(BaseModel):
@@ -35,6 +37,7 @@ class AccountUpdate(BaseModel):
 
     name: Name = None
     type: AccountType = None
+    in_net_worth: bool = None
 
 
 class AccountRead(BaseModel):
@@ -46,11 +49,21 @@ class AccountRead(BaseModel):
     type: AccountType
     created_at: datetime
     closed_at: datetime | None
+    in_net_worth: bool  # False: the balance is left out of net worth (401k, Roth IRA)
+
+
+class InvestmentRead(BaseModel):
+    """Where a Brokerage or Retirement account's balance came from; the parts add up to it."""
+
+    starting_cents: int  # the opening balance snapshot (before the first transfer)
+    contributed_cents: int  # transfers in minus transfers out
+    gain_cents: int  # later balance updates (market moves), dividends, fees
 
 
 class AccountWithBalance(AccountRead):
     # Calculated from transactions when the response is built, not a column.
     balance_cents: int
+    investment: InvestmentRead | None  # only for Brokerage and Retirement accounts
 
 
 class ReconcileRequest(BaseModel):
@@ -195,12 +208,13 @@ class Change(BaseModel):
 class DashboardSummary(BaseModel):
     start: dt.date
     end: dt.date
-    net_worth_cents: int  # all account balances at the end of `end`
+    net_worth_cents: int  # balances of accounts that count in net worth, at the end of `end`
     net_worth_change_cents: int  # since the end of the day before `start`
     income_cents: int
     spending_cents: int  # positive number; refunds reduce it
     saved_cents: int  # income - spending; negative if you spent more than you earned
-    # The part of saved_cents that went to "counts as saving" categories (Roth IRA, brokerage).
+    # The part of saved_cents that was invested: transfers into Brokerage or Retirement accounts,
+    # plus expenses in "counts as saving" categories.
     moved_to_savings_cents: int
     # These three are None unless compare_start and compare_end were given.
     income_change: Change | None

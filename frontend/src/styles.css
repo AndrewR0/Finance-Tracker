@@ -1790,3 +1790,9 @@ table.names tr.child td:first-child {
     display: none
   }
 }
+
+/* Put in / gain under a Brokerage or Retirement account (Accounts page). */
+.invest-line {
+  font-size: 12.5px;
+  margin-top: 2px;
+}

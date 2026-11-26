@@ -527,6 +527,8 @@ export interface components {
             /** Name */
             name: string;
             type: components["schemas"]["AccountType"];
+            /** In Net Worth */
+            in_net_worth?: boolean | null;
         };
         /** AccountRead */
         AccountRead: {
@@ -542,13 +544,15 @@ export interface components {
             created_at: string;
             /** Closed At */
             closed_at: string | null;
+            /** In Net Worth */
+            in_net_worth: boolean;
         };
         /**
          * AccountType
          * @description Matches the groups on the mockup's Accounts page.
          * @enum {string}
          */
-        AccountType: "checking" | "savings" | "credit_card" | "brokerage" | "cash";
+        AccountType: "checking" | "savings" | "credit_card" | "brokerage" | "cash" | "retirement";
         /**
          * AccountUpdate
          * @description PATCH body: send the fields you want to change (name, type, or both).
@@ -560,6 +564,8 @@ export interface components {
             /** Name */
             name?: string;
             type?: components["schemas"]["AccountType"];
+            /** In Net Worth */
+            in_net_worth?: boolean;
         };
         /** AccountWithBalance */
         AccountWithBalance: {
@@ -575,8 +581,11 @@ export interface components {
             created_at: string;
             /** Closed At */
             closed_at: string | null;
+            /** In Net Worth */
+            in_net_worth: boolean;
             /** Balance Cents */
             balance_cents: number;
+            investment: components["schemas"]["InvestmentRead"] | null;
         };
         /**
          * Cadence
@@ -873,6 +882,18 @@ export interface components {
             created_accounts: number;
             /** Created Categories */
             created_categories: number;
+        };
+        /**
+         * InvestmentRead
+         * @description Where a Brokerage or Retirement account's balance came from; the parts add up to it.
+         */
+        InvestmentRead: {
+            /** Starting Cents */
+            starting_cents: number;
+            /** Contributed Cents */
+            contributed_cents: number;
+            /** Gain Cents */
+            gain_cents: number;
         };
         /** NewAccount */
         NewAccount: {

@@ -11,13 +11,18 @@ const TYPE_LABELS: Record<AccountType, string> = {
   cash: "Cash",
   credit_card: "Credit card",
   brokerage: "Brokerage",
+  retirement: "Retirement",
 };
 
 const GROUPS: { title: string; types: AccountType[] }[] = [
   { title: "Cash", types: ["checking", "savings", "cash"] },
   { title: "Credit cards", types: ["credit_card"] },
   { title: "Investments", types: ["brokerage"] },
+  { title: "Retirement", types: ["retirement"] },
 ];
+
+const NOT_IN_NET_WORTH_HELP =
+  "Left out of net worth: money you can't reach yet. Its balance still shows here, and the retirement estimator can use it.";
 
 export function Accounts() {
   const accounts = useAccounts().data;
@@ -26,8 +31,11 @@ export function Accounts() {
   const open = (accounts ?? []).filter((a) => a.closed_at === null);
   const closed = (accounts ?? []).filter((a) => a.closed_at !== null);
   // Assets are what you have, liabilities what you owe. A credit card balance is negative.
-  const assets = open.filter((a) => a.balance_cents > 0).reduce((sum, a) => sum + a.balance_cents, 0);
-  const liabilities = open.filter((a) => a.balance_cents < 0).reduce((sum, a) => sum + a.balance_cents, 0);
+  // Accounts switched out of net worth (401k, Roth IRA) are left out of all three cards.
+  const counted = open.filter((a) => a.in_net_worth);
+  const assets = counted.filter((a) => a.balance_cents > 0).reduce((sum, a) => sum + a.balance_cents, 0);
+  const liabilities = counted.filter((a) => a.balance_cents < 0).reduce((sum, a) => sum + a.balance_cents, 0);
+  const leftOutAccounts = open.filter((a) => !a.in_net_worth);
 
   const groups = [
     ...GROUPS.map((g) => ({ title: g.title, accounts: open.filter((a) => g.types.includes(a.type)) })),
@@ -62,6 +70,11 @@ export function Accounts() {
         <div className="card kpi">
           <div className="lbl">Net worth</div>
           <div className="val">{formatMoney0(assets + liabilities)}</div>
+          {leftOutAccounts.length > 0 && (
+            <div className="delta" title={NOT_IN_NET_WORTH_HELP}>
+              Plus {formatMoney0(total(leftOutAccounts))} not in net worth
+            </div>
+          )}
         </div>
       </div>
 
@@ -106,7 +119,7 @@ export function Accounts() {
   );
 }
 
-type AccountChanges = { name?: string; type?: AccountType };
+type AccountChanges = { name?: string; type?: AccountType; in_net_worth?: boolean };
 
 /** One account. Click ✎ to edit its name and type in place: Enter saves, Esc cancels. */
 function AccountRow({ account }: { account: Account }) {
@@ -114,6 +127,7 @@ function AccountRow({ account }: { account: Account }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(account.name);
   const [type, setType] = useState<AccountType>(account.type);
+  const [inNetWorth, setInNetWorth] = useState(account.in_net_worth);
   const [reconciling, setReconciling] = useState(false);
   const save = useSave((changes: AccountChanges) => api.updateAccount(account.id, changes));
   const close = useSave(() => api.closeAccount(account.id));
@@ -125,6 +139,7 @@ function AccountRow({ account }: { account: Account }) {
   function startEditing() {
     setName(account.name);
     setType(account.type);
+    setInNetWorth(account.in_net_worth);
     save.reset(); // forget an error from a previous attempt
     setEditing(true);
   }
@@ -135,6 +150,7 @@ function AccountRow({ account }: { account: Account }) {
     const changes: AccountChanges = {};
     if (name.trim() !== account.name) changes.name = name;
     if (type !== account.type) changes.type = type;
+    if (inNetWorth !== account.in_net_worth) changes.in_net_worth = inNetWorth;
     if (Object.keys(changes).length === 0) return setEditing(false); // nothing changed: skip the request
     save.mutate(changes, { onSuccess: () => setEditing(false) });
   }
@@ -155,6 +171,9 @@ function AccountRow({ account }: { account: Account }) {
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => e.key === "Escape" && setEditing(false)}
               />
+              <label className="check" title={NOT_IN_NET_WORTH_HELP}>
+                <input type="checkbox" checked={inNetWorth} onChange={(e) => setInNetWorth(e.target.checked)} /> Count in net worth
+              </label>
               <button type="submit" className="btn-neon" disabled={save.isPending}>
                 Save
               </button>
@@ -166,11 +185,17 @@ function AccountRow({ account }: { account: Account }) {
           ) : (
             <>
               {account.name}
+              {!account.in_net_worth && (
+                <span className="muted" title={NOT_IN_NET_WORTH_HELP}>
+                  {" "}· not in net worth
+                </span>
+              )}
               {goalCount > 0 && (
                 <span className="muted">
                   {" "}· linked to {goalCount} {goalCount === 1 ? "goal" : "goals"}
                 </span>
               )}
+              {account.investment && <InvestmentLine investment={account.investment} />}
               <button className="icon-btn" title={`Edit ${account.name}`} aria-label={`Edit ${account.name}`} onClick={startEditing}>
                 ✎
               </button>
@@ -204,7 +229,8 @@ function AccountRow({ account }: { account: Account }) {
           ) : (
             <>
               <button className="btn small" onClick={() => setReconciling((open) => !open)}>
-                Reconcile
+                {/* Same thing underneath: a retirement balance is a snapshot copied from the provider. */}
+                {account.type === "retirement" ? "Update balance" : "Reconcile"}
               </button>
               <button
                 className="btn small"
@@ -290,6 +316,32 @@ function ReconcileRow({ account, onDone }: { account: Account; onDone: () => voi
   );
 }
 
+type Investment = NonNullable<Account["investment"]>;
+
+/**
+ * "Put in $X · Gain +$Y (+Z%)" under a Brokerage or Retirement account.
+ * Put in = the opening snapshot + transfers; gain = later balance updates (see app/balances.py).
+ */
+function InvestmentLine({ investment }: { investment: Investment }) {
+  const putIn = investment.starting_cents + investment.contributed_cents;
+  const gain = investment.gain_cents;
+  const percent = putIn > 0 ? (gain / putIn) * 100 : null;
+  const help =
+    `Put in: ${formatMoney(investment.contributed_cents)} in transfers` +
+    (investment.starting_cents ? ` + ${formatMoney(investment.starting_cents)} opening balance` : "") +
+    ". Opening balance: updates in the account's first week. Gain: every later Update balance, plus dividends and fees.";
+
+  return (
+    <div className="muted invest-line" title={help}>
+      Put in {formatMoney0(putIn)} · Gain{" "}
+      <span className={gain > 0 ? "up" : gain < 0 ? "down" : ""}>
+        {formatMoney0(gain, { sign: true })}
+        {percent !== null && ` (${percent >= 0 ? "+" : ""}${percent.toFixed(1)}%)`}
+      </span>
+    </div>
+  );
+}
+
 function total(accounts: Account[]): number {
   return accounts.reduce((sum, a) => sum + a.balance_cents, 0);
 }
@@ -297,11 +349,14 @@ function total(accounts: Account[]): number {
 function AddAccount({ onDone }: { onDone: () => void }) {
   const [name, setName] = useState("");
   const [type, setType] = useState<AccountType>("checking");
+  // null = follow the type: retirement accounts start out of net worth, the rest count.
+  const [inNetWorth, setInNetWorth] = useState<boolean | null>(null);
+  const counts = inNetWorth ?? type !== "retirement";
   const save = useSave(api.createAccount);
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
-    save.mutate({ name, type }, { onSuccess: onDone });
+    save.mutate({ name, type, in_net_worth: counts }, { onSuccess: onDone });
   }
 
   return (
@@ -319,6 +374,9 @@ function AddAccount({ onDone }: { onDone: () => void }) {
               <option key={value} value={value}>{label}</option>
             ))}
           </select>
+        </label>
+        <label className="check" title={NOT_IN_NET_WORTH_HELP}>
+          <input type="checkbox" checked={counts} onChange={(e) => setInNetWorth(e.target.checked)} /> Count in net worth
         </label>
         <button type="button" className="btn" onClick={onDone}>
           Cancel

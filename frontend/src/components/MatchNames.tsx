@@ -8,6 +8,7 @@ const TYPE_LABELS: Record<AccountType, string> = {
   cash: "Cash",
   credit_card: "Credit card",
   brokerage: "Brokerage",
+  retirement: "Retirement",
 };
 
 type Props = {

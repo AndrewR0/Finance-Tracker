@@ -70,7 +70,8 @@ export function guessAccountType(name: string): AccountType {
 const ACCOUNT_TYPE_WORDS: [AccountType, RegExp][] = [
   ["credit_card", /\b(credit|card|visa|mastercard|amex|american express|discover|sapphire)\b/i],
   ["savings", /\b(savings?|emergency|fund|reserve|hysa|money market)\b/i],
-  ["brokerage", /\b(brokerage|invest(ment|ing)?s?|ira|roth|401k|403b|hsa|stocks?|fidelity|vanguard|schwab|robinhood)\b/i],
+  ["retirement", /\b(ira|roth|401k|403b|457b?|pension)\b/i],
+  ["brokerage", /\b(brokerage|invest(ment|ing)?s?|hsa|stocks?|fidelity|vanguard|schwab|robinhood)\b/i],
   ["cash", /\b(cash|wallet)\b/i],
 ];
 
