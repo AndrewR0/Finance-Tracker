@@ -2,7 +2,7 @@
 
 import datetime as dt
 
-from app.holdings import divide_round, open_lots, price_from_value, value_cents
+from app.holdings import divide_round, price_from_value, run_fifo, value_cents
 from app.models import SHARE_UNITS, Trade, TradeKind
 
 TODAY = "2026-11-26"
@@ -65,14 +65,21 @@ def trade(id, kind, shares, amount, day):
 
 
 def test_a_sell_uses_the_oldest_lot_first():
-    lots, realized = open_lots([
+    fifo = run_fifo([
         trade(1, TradeKind.OPENING, 10, 100000, 1),  # $100/share
         trade(2, TradeKind.BUY, 10, 150000, 2),  # $150/share
         trade(3, TradeKind.SELL, 15, 240000, 3),  # $160/share: all of lot 1 + half of lot 2
     ])
 
-    assert [(lot.trade_id, lot.shares // SHARE_UNITS, lot.cost_cents) for lot in lots] == [(2, 5, 75000)]
-    assert realized == {(1, 1): 240000 - 100000 - 75000}
+    assert [(lot.trade_id, lot.shares // SHARE_UNITS, lot.cost_cents) for lot in fifo.lots] == [(2, 5, 75000)]
+    assert fifo.realized == {(1, 1): 240000 - 100000 - 75000}
+    assert fifo.oversold == []
+
+
+def test_selling_more_than_held_is_flagged():
+    fifo = run_fifo([trade(1, TradeKind.BUY, 10, 100000, 1), trade(2, TradeKind.SELL, 11, 120000, 2)])
+
+    assert fifo.oversold == [2]
 
 
 # ---- setting up an account ----

@@ -32,6 +32,8 @@ export type Holding = Schemas["HoldingRead"];
 export type HoldingInput = Schemas["HoldingInput"];
 export type SecurityKind = Schemas["SecurityKind"];
 export type PriceStatus = Schemas["PriceStatus"];
+export type Trade = Schemas["TradeRead"];
+export type TradeKind = Schemas["TradeKind"];
 
 /** The backend answered with an error. message is FastAPI's "detail", made readable. */
 export class ApiError extends Error {
@@ -152,6 +154,10 @@ export const api = {
   addPrice: (securityId: number, body: { date: string; price: string }) =>
     request<Schemas["PriceRead"]>("POST", `/api/securities/${securityId}/prices`, body),
   priceStatus: () => request<PriceStatus>("GET", "/api/prices/status"),
+  trades: (accountId: number) => request<Trade[]>("GET", `/api/accounts/${accountId}/trades`),
+  addTrade: (accountId: number, body: Schemas["TradeCreate"]) =>
+    request<Trade[]>("POST", `/api/accounts/${accountId}/trades`, body),
+  deleteTrade: (tradeId: number) => request<void>("DELETE", `/api/trades/${tradeId}`),
   refreshPrices: () => request<PriceStatus>("POST", "/api/prices/refresh"),
   updateSecurity: (securityId: number, body: Schemas["SecurityUpdate"]) =>
     request<void>("PATCH", `/api/securities/${securityId}`, body),

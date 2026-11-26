@@ -227,8 +227,14 @@ class TradeKind(enum.StrEnum):
     # A holding you already had when you started tracking it, at your provider's cost basis.
     # Unlike a buy, it doesn't use the account's cash: that money was already in the account.
     OPENING = "opening"
-    BUY = "buy"
-    SELL = "sell"
+    BUY = "buy"  # paid from the account's cash
+    SELL = "sell"  # proceeds go to the account's cash
+    # Cash paid out by a holding. Gain inside the account, not income on the dashboard.
+    # shares is 0; reinvesting it is a separate buy.
+    DIVIDEND = "dividend"
+    # Shares bought with money that never passed through the app, like 401k payroll
+    # contributions. A lot, like a buy, but no cash leaves the account.
+    CONTRIBUTION = "contribution"
 
 
 class Trade(Base):
@@ -242,7 +248,8 @@ class Trade(Base):
     date: Mapped[dt.date]
     kind: Mapped[TradeKind] = mapped_column(Enum(TradeKind, native_enum=False, values_callable=lambda obj: [e.value for e in obj]))
     shares: Mapped[int]  # units of 1/SHARE_UNITS of a share
-    # Cost basis for opening and buy (fees included), proceeds for sell (fees taken off).
+    # Cost basis for opening, buy and contribution (fees included), proceeds for sell
+    # (fees taken off), the cash paid for a dividend.
     amount_cents: Mapped[int]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 

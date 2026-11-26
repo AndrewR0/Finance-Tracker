@@ -12,7 +12,7 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StringConstraints
 
 from app.goals import GoalStatus
-from app.models import AccountType, CategoryKind, PriceSource, SecurityKind
+from app.models import AccountType, CategoryKind, PriceSource, SecurityKind, TradeKind
 from app.periods import PeriodKind
 from app.recurring import Cadence
 
@@ -468,6 +468,7 @@ class HoldingRead(BaseModel):
     value_cents: int
     gain_cents: int  # unrealized: value - cost basis
     realized_cents: int  # locked in by sells
+    dividends_cents: int  # cash it paid out
 
 
 class AccountHoldings(BaseModel):
@@ -478,6 +479,8 @@ class AccountHoldings(BaseModel):
     value_cents: int  # cash + holdings
     cost_basis_cents: int
     gain_cents: int  # unrealized, all holdings
+    realized_cents: int  # from sells, including holdings since sold out
+    dividends_cents: int
     can_undo: bool  # only opening lots so far, so the setup can be undone
     holdings: list[HoldingRead]
 
@@ -511,3 +514,38 @@ class SecurityUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     price_source: PriceSource
+
+
+class NewSecurity(BaseModel):
+    """A security the account hasn't held before."""
+
+    ticker: Ticker
+    name: Name
+    kind: SecurityKind
+    price_source: PriceSource = PriceSource.YFINANCE
+
+
+class TradeCreate(BaseModel):
+    """One buy, sell, dividend or contribution. Give security_id, or new_security for a first buy."""
+
+    date: dt.date
+    kind: TradeKind
+    security_id: int | None = None
+    new_security: NewSecurity | None = None
+    shares: Shares | None = None  # every kind but dividend
+    # buy / contribution: what it cost, fees included. sell: what you got, after fees.
+    # dividend: the cash paid.
+    amount_cents: Annotated[StrictInt, Field(gt=0)]
+    # Dividend only: shares bought right away with it (a reinvested dividend). The app adds
+    # the matching buy for the same amount.
+    reinvested_shares: Shares | None = None
+
+
+class TradeRead(BaseModel):
+    id: int
+    date: dt.date
+    kind: TradeKind
+    security_id: int
+    ticker: str
+    shares: int  # units of 1/100,000,000 of a share; 0 for a dividend
+    amount_cents: int

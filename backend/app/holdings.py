@@ -1,7 +1,7 @@
 """Holdings, derived from trades. Never stored.
 
 FIFO (first in, first out): a sell uses up the oldest lot first. A lot is what's left of one
-opening lot or buy: how many shares, and what they cost.
+opening lot, buy or contribution: how many shares, and what they cost.
 
 Units (see app/models.py): shares in 1/SHARE_UNITS of a share, prices in 1/PRICE_UNITS of a
 dollar, money in cents. Everything is integer math; rounding happens once, in value_cents().
@@ -56,6 +56,7 @@ class Position:
     shares: int
     cost_cents: int
     realized_cents: int  # gains locked in by sells (proceeds - cost of the shares sold)
+    dividends_cents: int  # cash it paid out
     price: int | None  # latest price on or before the as_of day; None if there isn't one yet
     price_date: dt.date | None
 
@@ -65,18 +66,33 @@ class Position:
         return self.cost_cents if self.price is None else value_cents(self.shares, self.price)
 
 
-def open_lots(trades: list[Trade]) -> tuple[list[Lot], dict[tuple[int, int], int]]:
-    """Run trades (oldest first) through FIFO.
+# Trades that add a lot. Opening and contribution lots don't touch the account's cash.
+ADDS_LOT = (TradeKind.OPENING, TradeKind.BUY, TradeKind.CONTRIBUTION)
 
-    Returns the lots still open, and realized gains by (account_id, security_id).
-    A sell bigger than what's held is cut off at what's held (the API refuses those anyway).
-    """
+
+@dataclass
+class Fifo:
+    """What running trades through FIFO gives. Keys are (account_id, security_id)."""
+
+    lots: list[Lot]
+    realized: dict[tuple[int, int], int]
+    dividends: dict[tuple[int, int], int]
+    oversold: list[int]  # ids of sells for more shares than were held at the time
+
+
+def run_fifo(trades: list[Trade]) -> Fifo:
+    """Run trades, oldest first (same day: in the order they were entered), through FIFO."""
     lots: dict[tuple[int, int], list[Lot]] = defaultdict(list)
     realized: dict[tuple[int, int], int] = defaultdict(int)
+    dividends: dict[tuple[int, int], int] = defaultdict(int)
+    oversold: list[int] = []
     for trade in sorted(trades, key=lambda t: (t.date, t.id)):
         key = (trade.account_id, trade.security_id)
-        if trade.kind in (TradeKind.OPENING, TradeKind.BUY):
+        if trade.kind in ADDS_LOT:
             lots[key].append(Lot(trade.id, trade.account_id, trade.security_id, trade.date, trade.shares, trade.amount_cents))
+            continue
+        if trade.kind == TradeKind.DIVIDEND:
+            dividends[key] += trade.amount_cents
             continue
         # A sell: take shares from the oldest lots first.
         to_sell = trade.shares
@@ -93,8 +109,10 @@ def open_lots(trades: list[Trade]) -> tuple[list[Lot], dict[tuple[int, int], int
             to_sell -= taken
             if lot.shares == 0:
                 queue.pop(0)
+        if to_sell > 0:
+            oversold.append(trade.id)
         realized[key] += trade.amount_cents - cost_sold
-    return [lot for queue in lots.values() for lot in queue], dict(realized)
+    return Fifo([lot for queue in lots.values() for lot in queue], dict(realized), dict(dividends), oversold)
 
 
 def latest_prices(db: Session, as_of: dt.date | None = None) -> dict[int, tuple[int, dt.date]]:
@@ -125,23 +143,24 @@ def get_positions(db: Session, as_of: dt.date | None = None) -> list[Position]:
     trades = get_trades(db, as_of)
     if not trades:
         return []
-    lots, realized = open_lots(trades)
+    fifo = run_fifo(trades)
     prices = latest_prices(db, as_of)
     securities = {t.security_id: t.security for t in trades}
 
     totals: dict[tuple[int, int], list[int]] = {}
-    for lot in lots:
+    for lot in fifo.lots:
         shares_cost = totals.setdefault((lot.account_id, lot.security_id), [0, 0])
         shares_cost[0] += lot.shares
         shares_cost[1] += lot.cost_cents
-    for key in realized:  # sold out completely: still listed, for its realized gain
+    for key in [*fifo.realized, *fifo.dividends]:  # sold out: still listed, for its realized gain
         totals.setdefault(key, [0, 0])
 
     positions = []
     for (account_id, security_id), (shares, cost) in totals.items():
         price, price_date = prices.get(security_id, (None, None))
+        key = (account_id, security_id)
         positions.append(Position(account_id, securities[security_id], shares, cost,
-                                  realized.get((account_id, security_id), 0), price, price_date))
+                                  fifo.realized.get(key, 0), fifo.dividends.get(key, 0), price, price_date))
     return sorted(positions, key=lambda p: (p.account_id, -p.value_cents, p.security.ticker))
 
 
@@ -154,14 +173,14 @@ def holdings_values(db: Session, as_of: dt.date | None = None) -> dict[int, int]
 
 
 def cash_from_trades(db: Session, as_of: dt.date | None = None) -> dict[int, int]:
-    """{account_id: cash change from buys and sells}. Buys spend cash, sells bring it back.
+    """{account_id: cash change from trades}. Buys spend cash; sells and dividends bring it in.
 
-    Opening lots don't touch cash: that money was already in the account (see TradeKind).
+    Opening and contribution lots don't touch cash (see TradeKind).
     """
     result: dict[int, int] = defaultdict(int)
     for trade in get_trades(db, as_of):
         if trade.kind == TradeKind.BUY:
             result[trade.account_id] -= trade.amount_cents
-        elif trade.kind == TradeKind.SELL:
+        elif trade.kind in (TradeKind.SELL, TradeKind.DIVIDEND):
             result[trade.account_id] += trade.amount_cents
     return dict(result)

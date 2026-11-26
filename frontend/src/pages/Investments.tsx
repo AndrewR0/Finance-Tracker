@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 
-import { api, type Account, type AccountHoldings, type Holding, type SecurityKind } from "../api/client";
-import { useAccounts, useHoldings, usePriceStatus, useSave } from "../api/hooks";
+import { api, type Account, type AccountHoldings, type Holding, type SecurityKind, type TradeKind } from "../api/client";
+import { useAccounts, useHoldings, usePriceStatus, useSave, useTrades } from "../api/hooks";
 import { formatShortDate, todayISO } from "../lib/dates";
 import { formatMoney, formatMoney0, parseMoney } from "../lib/money";
 import { PRICE_DECIMALS, SHARE_DECIMALS, formatPrice, formatShares, gainPercent, parseDecimal } from "../lib/shares";
@@ -126,6 +126,8 @@ function PricesBar({ holdings }: { holdings: AccountHoldings[] }) {
 function AccountCard({ account }: { account: AccountHoldings }) {
   const undo = useSave(() => api.undoHoldings(account.account_id));
   const [confirming, setConfirming] = useState(false);
+  const [panel, setPanel] = useState<"none" | "trade" | "history">("none");
+  const toggle = (which: "trade" | "history") => setPanel((open) => (open === which ? "none" : which));
 
   return (
     <div className="card" style={{ padding: "4px 6px", marginBottom: 16 }}>
@@ -172,6 +174,22 @@ function AccountCard({ account }: { account: AccountHoldings }) {
           </tr>
         </tbody>
       </table>
+      {(account.realized_cents !== 0 || account.dividends_cents !== 0) && (
+        <div className="muted realized-line">
+          Realized from sales <Gain cents={account.realized_cents} cost={0} /> · Dividends{" "}
+          <span className="num">{formatMoney(account.dividends_cents)}</span>
+        </div>
+      )}
+      <div className="card-actions">
+        <button className="btn small" onClick={() => toggle("trade")}>
+          + Trade
+        </button>
+        <button className="btn small" onClick={() => toggle("history")}>
+          {panel === "history" ? "Hide history" : "History"}
+        </button>
+      </div>
+      {panel === "trade" && <TradeForm account={account} onDone={() => setPanel("none")} />}
+      {panel === "history" && <TradeHistory accountId={account.account_id} />}
       {account.can_undo && (
         <div style={{ padding: "6px 10px 10px", fontSize: 12.5 }} className="muted">
           {confirming ? (
@@ -192,6 +210,198 @@ function AccountCard({ account }: { account: AccountHoldings }) {
           {undo.error && <span className="form-error"> {undo.error.message}</span>}
         </div>
       )}
+    </div>
+  );
+}
+
+const TRADE_KINDS: { kind: Exclude<TradeKind, "opening">; label: string; help: string }[] = [
+  { kind: "buy", label: "Buy", help: "Paid from the account's cash. Add the transfer in first, as usual." },
+  { kind: "sell", label: "Sell", help: "What you got after fees goes to the account's cash. Oldest shares sell first (FIFO)." },
+  { kind: "dividend", label: "Dividend", help: "Counts as gain inside the account, not income. Tick reinvested if it bought shares." },
+  {
+    kind: "contribution",
+    label: "401k contribution",
+    help: "Shares bought with payroll money that never went through your bank: no cash leaves the account.",
+  },
+];
+
+const KIND_NAMES: Record<TradeKind, string> = {
+  opening: "Opening lot",
+  buy: "Buy",
+  sell: "Sell",
+  dividend: "Dividend",
+  contribution: "401k contribution",
+};
+
+/** Add a buy, sell, dividend or 401k contribution to one account. */
+function TradeForm({ account, onDone }: { account: AccountHoldings; onDone: () => void }) {
+  const [kind, setKind] = useState<Exclude<TradeKind, "opening">>("buy");
+  const [date, setDate] = useState(todayISO());
+  const [security, setSecurity] = useState(account.holdings[0] ? String(account.holdings[0].security_id) : "new");
+  const [newTicker, setNewTicker] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newKind, setNewKind] = useState<SecurityKind>("fund");
+  const [newManual, setNewManual] = useState(false);
+  const [shares, setShares] = useState("");
+  const [amount, setAmount] = useState("");
+  const [reinvested, setReinvested] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const save = useSave((body: Parameters<typeof api.addTrade>[1]) => api.addTrade(account.account_id, body));
+
+  const needsShares = kind !== "dividend" || reinvested;
+  const isNew = security === "new" && kind !== "sell" && kind !== "dividend";
+
+  function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    const cents = parseMoney(amount);
+    if (cents === null || cents <= 0) return setProblem("Enter the amount in dollars (more than $0).");
+    const parsedShares = needsShares ? parseDecimal(shares, SHARE_DECIMALS) : null;
+    if (needsShares && parsedShares === null) return setProblem(`Enter shares (more than 0, up to ${SHARE_DECIMALS} decimals).`);
+    if (isNew && (!newTicker.trim() || !newName.trim())) return setProblem("A new holding needs a ticker and a name.");
+    if (!isNew && security === "new") return setProblem("Pick the holding.");
+    setProblem(null);
+    save.mutate(
+      {
+        date,
+        kind,
+        amount_cents: cents,
+        ...(isNew
+          ? { new_security: { ticker: newTicker.trim(), name: newName.trim(), kind: newKind, price_source: newManual ? "manual" : "yfinance" } }
+          : { security_id: Number(security) }),
+        ...(kind === "dividend"
+          ? reinvested
+            ? { reinvested_shares: parsedShares as string }
+            : {}
+          : { shares: parsedShares as string }),
+      },
+      { onSuccess: onDone },
+    );
+  }
+
+  const amountLabel = kind === "sell" ? "Proceeds (after fees)" : kind === "dividend" ? "Dividend paid" : "Cost (with fees)";
+
+  return (
+    <form className="trade-form" onSubmit={onSubmit}>
+      <div className="row">
+        <label className="field">
+          Type
+          <select className="select" value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
+            {TRADE_KINDS.map((k) => (
+              <option key={k.kind} value={k.kind}>{k.label}</option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          Date
+          <input className="input" type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
+        </label>
+        <label className="field">
+          Holding
+          <select className="select" value={security} onChange={(e) => setSecurity(e.target.value)}>
+            {account.holdings.map((h) => (
+              <option key={h.security_id} value={h.security_id}>{h.ticker} · {h.name}</option>
+            ))}
+            {kind !== "sell" && kind !== "dividend" && <option value="new">New holding…</option>}
+          </select>
+        </label>
+        {needsShares && (
+          <label className="field">
+            {kind === "dividend" ? "Shares it bought" : "Shares"}
+            <input className="input" inputMode="decimal" placeholder="0.00" value={shares} onChange={(e) => setShares(e.target.value)} />
+          </label>
+        )}
+        <label className="field">
+          {amountLabel}
+          <input className="input" inputMode="decimal" placeholder="$" value={amount} onChange={(e) => setAmount(e.target.value)} />
+        </label>
+      </div>
+      {isNew && (
+        <div className="row">
+          <label className="field">
+            Ticker
+            <input className="input" value={newTicker} maxLength={20} placeholder="VTI" onChange={(e) => setNewTicker(e.target.value.toUpperCase())} />
+          </label>
+          <label className="field">
+            Name
+            <input className="input" value={newName} maxLength={100} onChange={(e) => setNewName(e.target.value)} />
+          </label>
+          <label className="field">
+            Kind
+            <select className="select" value={newKind} onChange={(e) => setNewKind(e.target.value as SecurityKind)}>
+              {Object.entries(KIND_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="check" title="No public ticker: you'll type its price in">
+            <input type="checkbox" checked={newManual} onChange={(e) => setNewManual(e.target.checked)} /> Manual price
+          </label>
+        </div>
+      )}
+      <div className="row">
+        {kind === "dividend" && (
+          <label className="check">
+            <input type="checkbox" checked={reinvested} onChange={(e) => setReinvested(e.target.checked)} /> Reinvested (it bought
+            shares)
+          </label>
+        )}
+        <span className="muted" style={{ fontSize: 12.5, flex: 1 }}>
+          {TRADE_KINDS.find((k) => k.kind === kind)?.help}
+        </span>
+        <button type="button" className="btn" onClick={onDone}>
+          Cancel
+        </button>
+        <button type="submit" className="btn-neon" disabled={save.isPending}>
+          Save
+        </button>
+      </div>
+      {(problem ?? save.error?.message) && <p className="form-error">{problem ?? save.error?.message}</p>}
+    </form>
+  );
+}
+
+/** Every trade in one account, newest first. ✕ deletes one (re-add it to change it). */
+function TradeHistory({ accountId }: { accountId: number }) {
+  const trades = useTrades(accountId).data;
+  const remove = useSave((tradeId: number) => api.deleteTrade(tradeId));
+  const [confirmId, setConfirmId] = useState<number | null>(null);
+
+  if (trades === undefined) return <div className="muted trade-history">Loading…</div>;
+  return (
+    <div className="trade-history">
+      <table className="accttable">
+        <tbody>
+          {trades.map((t) => (
+            <tr key={t.id}>
+              <td className="muted">{formatShortDate(t.date)} {t.date.slice(0, 4)}</td>
+              <td>{KIND_NAMES[t.kind]}</td>
+              <td>
+                <b>{t.ticker}</b>
+              </td>
+              <td className="r num">{t.shares ? formatShares(t.shares) : ""}</td>
+              <td className="r num">{formatMoney(t.amount_cents)}</td>
+              <td className="r">
+                {t.kind !== "opening" &&
+                  (confirmId === t.id ? (
+                    <>
+                      <button className="btn small" disabled={remove.isPending} onClick={() => remove.mutate(t.id, { onSuccess: () => setConfirmId(null) })}>
+                        Delete
+                      </button>{" "}
+                      <button className="btn small" onClick={() => setConfirmId(null)}>
+                        Keep
+                      </button>
+                    </>
+                  ) : (
+                    <button className="icon-btn" aria-label={`Delete this ${KIND_NAMES[t.kind]}`} onClick={() => setConfirmId(t.id)}>
+                      ✕
+                    </button>
+                  ))}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {remove.error && <p className="form-error">{remove.error.message}</p>}
     </div>
   );
 }

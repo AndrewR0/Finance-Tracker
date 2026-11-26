@@ -1839,3 +1839,34 @@ table.names tr.child td:first-child {
   font-size: 13px;
   color: var(--bad);
 }
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+  padding: 8px 10px 2px;
+}
+.realized-line {
+  padding: 6px 10px 0;
+  font-size: 12.5px;
+}
+.trade-form {
+  margin: 8px 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(46, 230, 255, .4);
+  border-radius: 10px;
+}
+.trade-form .row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.trade-form .row .field {
+  flex: 1;
+  min-width: 130px;
+}
+.trade-history {
+  margin: 8px 10px;
+  font-size: 13px;
+}

@@ -627,6 +627,51 @@ export interface paths {
         patch: operations["update_security_api_securities__security_id__patch"];
         trace?: never;
     };
+    "/api/accounts/{account_id}/trades": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Trades
+         * @description An account's trades, newest first.
+         */
+        get: operations["list_trades_api_accounts__account_id__trades_get"];
+        put?: never;
+        /**
+         * Add Trade
+         * @description Record a buy, sell, dividend or contribution. Returns what was added (a reinvested
+         *     dividend adds two trades: the dividend and the buy it paid for).
+         */
+        post: operations["add_trade_api_accounts__account_id__trades_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trades/{trade_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Trade
+         * @description Delete a trade entered by mistake (re-add it to change it). Opening lots: undo the setup.
+         */
+        delete: operations["delete_trade_api_trades__trade_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -672,6 +717,10 @@ export interface components {
             cost_basis_cents: number;
             /** Gain Cents */
             gain_cents: number;
+            /** Realized Cents */
+            realized_cents: number;
+            /** Dividends Cents */
+            dividends_cents: number;
             /** Can Undo */
             can_undo: boolean;
             /** Holdings */
@@ -990,6 +1039,8 @@ export interface components {
             gain_cents: number;
             /** Realized Cents */
             realized_cents: number;
+            /** Dividends Cents */
+            dividends_cents: number;
         };
         /**
          * HoldingsSetup
@@ -1125,6 +1176,19 @@ export interface components {
             kind: components["schemas"]["CategoryKind"];
             /** Parent */
             parent?: number | string | null;
+        };
+        /**
+         * NewSecurity
+         * @description A security the account hasn't held before.
+         */
+        NewSecurity: {
+            /** Ticker */
+            ticker: string;
+            /** Name */
+            name: string;
+            kind: components["schemas"]["SecurityKind"];
+            /** @default yfinance */
+            price_source: components["schemas"]["PriceSource"];
         };
         /** PacePoint */
         PacePoint: {
@@ -1331,6 +1395,51 @@ export interface components {
             previous_cents: number | null;
             /** Counts As Saving */
             counts_as_saving: boolean;
+        };
+        /**
+         * TradeCreate
+         * @description One buy, sell, dividend or contribution. Give security_id, or new_security for a first buy.
+         */
+        TradeCreate: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            kind: components["schemas"]["TradeKind"];
+            /** Security Id */
+            security_id?: number | null;
+            new_security?: components["schemas"]["NewSecurity"] | null;
+            /** Shares */
+            shares?: number | string | null;
+            /** Amount Cents */
+            amount_cents: number;
+            /** Reinvested Shares */
+            reinvested_shares?: number | string | null;
+        };
+        /**
+         * TradeKind
+         * @enum {string}
+         */
+        TradeKind: "opening" | "buy" | "sell" | "dividend" | "contribution";
+        /** TradeRead */
+        TradeRead: {
+            /** Id */
+            id: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            kind: components["schemas"]["TradeKind"];
+            /** Security Id */
+            security_id: number;
+            /** Ticker */
+            ticker: string;
+            /** Shares */
+            shares: number;
+            /** Amount Cents */
+            amount_cents: number;
         };
         /** TransactionCreate */
         TransactionCreate: {
@@ -2720,6 +2829,101 @@ export interface operations {
                 "application/json": components["schemas"]["SecurityUpdate"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_trades_api_accounts__account_id__trades_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradeRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_trade_api_accounts__account_id__trades_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TradeCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradeRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_trade_api_trades__trade_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trade_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             204: {

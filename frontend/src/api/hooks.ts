@@ -20,6 +20,10 @@ export function useHoldings() {
   return useQuery({ queryKey: ["holdings"], queryFn: api.holdings });
 }
 
+export function useTrades(accountId: number, enabled = true) {
+  return useQuery({ queryKey: ["trades", accountId], queryFn: () => api.trades(accountId), enabled });
+}
+
 export function usePriceStatus() {
   return useQuery({ queryKey: ["price-status"], queryFn: api.priceStatus });
 }

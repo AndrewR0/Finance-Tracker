@@ -10,7 +10,7 @@ from app import prices
 from app.balances import get_cash
 from app.clock import Today
 from app.db import get_db
-from app.holdings import Position, get_positions, price_from_value
+from app.holdings import Position, get_positions, get_trades, price_from_value, run_fifo
 from app.models import (
     PRICE_UNITS,
     SHARE_UNITS,
@@ -31,6 +31,8 @@ from app.schemas import (
     PriceRead,
     PriceStatus,
     SecurityUpdate,
+    TradeCreate,
+    TradeRead,
 )
 
 router = APIRouter(prefix="/api", tags=["investments"])
@@ -57,6 +59,7 @@ def holding_read(position: Position) -> HoldingRead:
         value_cents=position.value_cents,
         gain_cents=position.value_cents - position.cost_cents,
         realized_cents=position.realized_cents,
+        dividends_cents=position.dividends_cents,
     )
 
 
@@ -72,7 +75,8 @@ def account_holdings(db: Session, accounts: list[Account]) -> list[AccountHoldin
     for account in accounts:
         if account.id not in trade_kinds:
             continue
-        held = [holding_read(p) for p in positions if p.account_id == account.id and p.shares > 0]
+        mine = [p for p in positions if p.account_id == account.id]
+        held = [holding_read(p) for p in mine if p.shares > 0]
         account_cash = cash.get(account.id, 0)
         holdings_value = sum(h.value_cents for h in held)
         cost = sum(h.cost_basis_cents for h in held)
@@ -84,6 +88,8 @@ def account_holdings(db: Session, accounts: list[Account]) -> list[AccountHoldin
             value_cents=account_cash + holdings_value,
             cost_basis_cents=cost,
             gain_cents=holdings_value - cost,
+            realized_cents=sum(p.realized_cents for p in mine),
+            dividends_cents=sum(p.dividends_cents for p in mine),
             can_undo=trade_kinds[account.id] == {TradeKind.OPENING},
             holdings=held,
         ))
@@ -220,5 +226,104 @@ def update_security(security_id: int, payload: SecurityUpdate, db: DbSession):
         raise HTTPException(status_code=404, detail=f"Security {security_id} does not exist.")
     security.price_source = payload.price_source
     prices.last_refresh.failed.pop(security.ticker, None)  # its warning no longer applies
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ---- Trades going forward ----
+
+def trade_read(trade: Trade) -> TradeRead:
+    return TradeRead(id=trade.id, date=trade.date, kind=trade.kind, security_id=trade.security_id,
+                     ticker=trade.security.ticker, shares=trade.shares, amount_cents=trade.amount_cents)
+
+
+@router.get("/accounts/{account_id}/trades", response_model=list[TradeRead])
+def list_trades(account_id: int, db: DbSession):
+    """An account's trades, newest first."""
+    account = get_investment_account(db, account_id)
+    trades = get_trades(db, account_id=account.id)
+    return [trade_read(t) for t in sorted(trades, key=lambda t: (t.date, t.id), reverse=True)]
+
+
+def check_not_oversold(db: Session, account: Account) -> None:
+    """Raise 422 (after the caller's changes are flushed) if any sell is for more shares than were held."""
+    db.flush()
+    fifo = run_fifo(get_trades(db, account_id=account.id))
+    if fifo.oversold:
+        sell = db.get(Trade, fifo.oversold[0])
+        raise HTTPException(
+            status_code=422,
+            detail=f"That leaves the {sell.security.ticker} sell on {sell.date} selling more shares than "
+                   f"{account.name} held then.",
+        )
+
+
+def resolve_security(db: Session, payload: TradeCreate) -> Security:
+    if (payload.security_id is None) == (payload.new_security is None):
+        raise HTTPException(status_code=422, detail="Give either security_id or new_security.")
+    if payload.security_id is not None:
+        security = db.get(Security, payload.security_id)
+        if security is None:
+            raise HTTPException(status_code=404, detail=f"Security {payload.security_id} does not exist.")
+        return security
+    new = payload.new_security
+    existing = db.scalar(select(Security).where(Security.ticker == new.ticker))
+    if existing is not None:
+        return existing  # already known (maybe held in another account): reuse it
+    security = Security(ticker=new.ticker, name=new.name, kind=new.kind, price_source=new.price_source)
+    db.add(security)
+    db.flush()
+    return security
+
+
+@router.post("/accounts/{account_id}/trades", response_model=list[TradeRead], status_code=status.HTTP_201_CREATED)
+def add_trade(account_id: int, payload: TradeCreate, db: DbSession):
+    """Record a buy, sell, dividend or contribution. Returns what was added (a reinvested
+    dividend adds two trades: the dividend and the buy it paid for)."""
+    account = get_investment_account(db, account_id)
+    if account.closed_at is not None:
+        raise HTTPException(status_code=409, detail=f"{account.name} is closed. Reopen it first.")
+    if payload.kind == TradeKind.OPENING:
+        raise HTTPException(status_code=422, detail="Opening lots come from setting up holdings.")
+    if payload.kind == TradeKind.DIVIDEND:
+        if payload.shares is not None:
+            raise HTTPException(status_code=422, detail="A dividend has no shares; use reinvested_shares if it bought some.")
+    else:
+        if payload.shares is None:
+            raise HTTPException(status_code=422, detail=f"A {payload.kind} needs shares.")
+        if payload.reinvested_shares is not None:
+            raise HTTPException(status_code=422, detail="reinvested_shares is only for dividends.")
+    security = resolve_security(db, payload)
+
+    def add(kind: TradeKind, shares, amount: int) -> Trade:
+        units = 0 if shares is None else int(shares * SHARE_UNITS)
+        trade = Trade(account_id=account.id, security_id=security.id, date=payload.date, kind=kind,
+                      shares=units, amount_cents=amount)
+        db.add(trade)
+        # A security with typed-in prices learns one from the trade, if it has none that day.
+        if units and security.price_source == PriceSource.MANUAL:
+            if db.scalar(select(Price.id).where(Price.security_id == security.id, Price.date == payload.date)) is None:
+                set_price(db, security.id, payload.date, price_from_value(units, amount), PriceSource.MANUAL)
+        return trade
+
+    added = [add(payload.kind, payload.shares, payload.amount_cents)]
+    if payload.reinvested_shares is not None:
+        added.append(add(TradeKind.BUY, payload.reinvested_shares, payload.amount_cents))
+    check_not_oversold(db, account)
+    db.commit()
+    return [trade_read(t) for t in added]
+
+
+@router.delete("/trades/{trade_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+def delete_trade(trade_id: int, db: DbSession):
+    """Delete a trade entered by mistake (re-add it to change it). Opening lots: undo the setup."""
+    trade = db.get(Trade, trade_id)
+    if trade is None:
+        raise HTTPException(status_code=404, detail=f"Trade {trade_id} does not exist.")
+    if trade.kind == TradeKind.OPENING:
+        raise HTTPException(status_code=409, detail="That's an opening lot. Undo the account's setup to change it.")
+    account = db.get(Account, trade.account_id)
+    db.delete(trade)
+    check_not_oversold(db, account)  # deleting a buy can leave a later sell short
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
