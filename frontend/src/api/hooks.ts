@@ -24,6 +24,14 @@ export function useTrades(accountId: number, enabled = true) {
   return useQuery({ queryKey: ["trades", accountId], queryFn: () => api.trades(accountId), enabled });
 }
 
+export function useComparison(accountId: number | null) {
+  return useQuery({
+    queryKey: ["comparison", accountId],
+    queryFn: () => api.comparison(accountId),
+    placeholderData: (previous) => previous, // keep the chart while another account loads
+  });
+}
+
 export function usePriceStatus() {
   return useQuery({ queryKey: ["price-status"], queryFn: api.priceStatus });
 }

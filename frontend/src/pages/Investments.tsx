@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react";
 
 import { api, type Account, type AccountHoldings, type Holding, type SecurityKind, type TradeKind } from "../api/client";
-import { useAccounts, useHoldings, usePriceStatus, useSave, useTrades } from "../api/hooks";
+import { useAccounts, useComparison, useHoldings, usePriceStatus, useSave, useTrades } from "../api/hooks";
+import { BenchmarkChart } from "../charts/BenchmarkChart";
 import { formatShortDate, todayISO } from "../lib/dates";
 import { formatMoney, formatMoney0, parseMoney } from "../lib/money";
 import { PRICE_DECIMALS, SHARE_DECIMALS, formatPrice, formatShares, gainPercent, parseDecimal } from "../lib/shares";
@@ -56,6 +57,8 @@ export function Investments() {
           </div>
         </div>
       )}
+
+      {all.length > 0 && <ComparisonCard accounts={accounts.filter((a) => a.type === "brokerage" || a.type === "retirement")} />}
 
       {holdings === undefined && <div className="empty">Loading…</div>}
       {all.map((account) => (
@@ -119,6 +122,71 @@ function PricesBar({ holdings }: { holdings: AccountHoldings[] }) {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+/** You vs the same deposits, on the same days, in the S&P 500 (SPY with dividends reinvested). */
+function ComparisonCard({ accounts }: { accounts: Account[] }) {
+  const [accountId, setAccountId] = useState<number | null>(null);
+  const comparison = useComparison(accountId).data;
+  const spy = comparison?.benchmark_cents ?? null;
+  const ahead = comparison && spy !== null ? comparison.value_cents - spy : null;
+
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div className="prices-line">
+        <h3 style={{ margin: 0 }}>vs the S&amp;P 500</h3>
+        <select
+          className="select"
+          aria-label="Which accounts"
+          style={{ width: "auto" }}
+          value={accountId ?? ""}
+          onChange={(e) => setAccountId(e.target.value === "" ? null : Number(e.target.value))}
+        >
+          <option value="">All investment accounts</option>
+          {accounts.map((a) => (
+            <option key={a.id} value={a.id}>{a.name}</option>
+          ))}
+        </select>
+      </div>
+      {comparison === undefined ? (
+        <p className="muted">Loading…</p>
+      ) : comparison.start === null ? (
+        <p className="muted">No deposits yet. Transfers into these accounts are what gets compared.</p>
+      ) : (
+        <>
+          <div className="compare-numbers">
+            <div>
+              <div className="muted">Put in since {formatShortDate(comparison.start)} {comparison.start.slice(0, 4)}</div>
+              <b className="num">{formatMoney0(comparison.put_in_cents)}</b>
+            </div>
+            <div>
+              <div className="muted">You now</div>
+              <b className="num">{formatMoney0(comparison.value_cents)}</b>
+            </div>
+            <div>
+              <div className="muted">Same deposits in the S&amp;P 500</div>
+              <b className="num">{spy === null ? "—" : formatMoney0(spy)}</b>
+            </div>
+            <div>
+              <div className="muted">{ahead === null ? "Difference" : ahead >= 0 ? "You're ahead by" : "You're behind by"}</div>
+              <b className={`num ${ahead === null ? "" : ahead >= 0 ? "up" : "down"}`}>
+                {ahead === null ? "—" : formatMoney0(Math.abs(ahead))}
+              </b>
+            </div>
+          </div>
+          <BenchmarkChart comparison={comparison} />
+          <p className="muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+            Each deposit (transfer in, opening balance, 401k contribution) "buys" SPY at that day's close, dividends
+            reinvested.
+            {comparison.tracked_since
+              ? ` Your line starts ${formatShortDate(comparison.tracked_since)}, when holdings were set up; earlier, only deposits are known.`
+              : " Your line appears once these accounts' holdings are set up."}
+            {spy === null && " S&P prices arrive with the next price refresh."}
+          </p>
+        </>
+      )}
     </div>
   );
 }

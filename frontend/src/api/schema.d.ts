@@ -672,6 +672,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/investments/comparison": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Compare With Sp500
+         * @description Your investments vs the same deposits put into the S&P 500 on the same days.
+         *
+         *     ?account_id=7 for one account; leave it out for every Brokerage and Retirement account.
+         */
+        get: operations["compare_with_sp500_api_investments_comparison_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -891,6 +913,40 @@ export interface components {
             change_cents: number;
             /** Change Percent */
             change_percent: number | null;
+        };
+        /**
+         * Comparison
+         * @description You vs the S&P 500 (SPY, dividends reinvested), for one investment account or all of them.
+         */
+        Comparison: {
+            /** Start */
+            start: string | null;
+            /** Put In Cents */
+            put_in_cents: number;
+            /** Value Cents */
+            value_cents: number;
+            /** Benchmark Cents */
+            benchmark_cents: number | null;
+            /** Benchmark As Of */
+            benchmark_as_of: string | null;
+            /** Tracked Since */
+            tracked_since: string | null;
+            /** Points */
+            points: components["schemas"]["ComparisonPoint"][];
+        };
+        /** ComparisonPoint */
+        ComparisonPoint: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Put In Cents */
+            put_in_cents: number;
+            /** Benchmark Cents */
+            benchmark_cents: number | null;
+            /** Value Cents */
+            value_cents: number | null;
         };
         /** DashboardSummary */
         DashboardSummary: {
@@ -2931,6 +2987,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compare_with_sp500_api_investments_comparison_get: {
+        parameters: {
+            query?: {
+                account_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Comparison"];
+                };
             };
             /** @description Validation Error */
             422: {

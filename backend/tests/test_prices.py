@@ -24,6 +24,9 @@ class FakeProvider:
             raise ConnectionError("Yahoo is down")
         return {day: Decimal(price) for day, price in self.data.get(ticker, {}).items() if start <= day <= end}
 
+    def closes_and_dividends(self, ticker, start, end):
+        return {}  # no benchmark data in these tests (tests/test_benchmark.py covers it)
+
 
 @pytest.fixture
 def provider(today):

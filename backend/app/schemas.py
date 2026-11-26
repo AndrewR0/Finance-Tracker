@@ -549,3 +549,27 @@ class TradeRead(BaseModel):
     ticker: str
     shares: int  # units of 1/100,000,000 of a share; 0 for a dividend
     amount_cents: int
+
+
+class ComparisonPoint(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    date: dt.date
+    put_in_cents: int  # deposits so far
+    benchmark_cents: int | None  # the same deposits in SPY; None before benchmark prices start
+    value_cents: int | None  # yours; None before these accounts' holdings were set up
+
+
+class Comparison(BaseModel):
+    """You vs the S&P 500 (SPY, dividends reinvested), for one investment account or all of them."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    start: dt.date | None  # first deposit
+    put_in_cents: int
+    value_cents: int  # yours today
+    benchmark_cents: int | None  # the same deposits in SPY today; None until there are prices
+    benchmark_as_of: dt.date | None
+    tracked_since: dt.date | None  # from when "yours" is known in the points
+    points: list[ComparisonPoint]  # weekly, from start to today
+

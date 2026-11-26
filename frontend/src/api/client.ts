@@ -33,6 +33,7 @@ export type HoldingInput = Schemas["HoldingInput"];
 export type SecurityKind = Schemas["SecurityKind"];
 export type PriceStatus = Schemas["PriceStatus"];
 export type Trade = Schemas["TradeRead"];
+export type Comparison = Schemas["Comparison"];
 export type TradeKind = Schemas["TradeKind"];
 
 /** The backend answered with an error. message is FastAPI's "detail", made readable. */
@@ -154,6 +155,9 @@ export const api = {
   addPrice: (securityId: number, body: { date: string; price: string }) =>
     request<Schemas["PriceRead"]>("POST", `/api/securities/${securityId}/prices`, body),
   priceStatus: () => request<PriceStatus>("GET", "/api/prices/status"),
+  /** accountId: one account; null: every investment account. */
+  comparison: (accountId: number | null) =>
+    request<Comparison>("GET", "/api/investments/comparison" + query({ account_id: accountId })),
   trades: (accountId: number) => request<Trade[]>("GET", `/api/accounts/${accountId}/trades`),
   addTrade: (accountId: number, body: Schemas["TradeCreate"]) =>
     request<Trade[]>("POST", `/api/accounts/${accountId}/trades`, body),

@@ -267,3 +267,21 @@ class Price(Base):
     date: Mapped[dt.date]
     price: Mapped[int]  # units of 1/PRICE_UNITS of a dollar
     source: Mapped[PriceSource] = mapped_column(Enum(PriceSource, native_enum=False, values_callable=lambda obj: [e.value for e in obj]))
+
+
+class BenchmarkPrice(Base):
+    """One day of a benchmark (SPY for the S&P 500): its close, and any dividend paid that day.
+
+    Raw closes and dividend amounts, not Yahoo's "adjusted close": an adjusted series gets
+    rescaled every time a dividend is paid, so stored values would stop agreeing with new
+    ones. app/benchmark.py reinvests the dividends itself instead.
+    """
+
+    __tablename__ = "benchmark_prices"
+    __table_args__ = (UniqueConstraint("symbol", "date", name="uq_benchmark_price_per_day"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    symbol: Mapped[str] = mapped_column(String(20))
+    date: Mapped[dt.date]
+    close: Mapped[int]  # units of 1/PRICE_UNITS of a dollar
+    dividend: Mapped[int] = mapped_column(default=0, server_default="0")  # per share, same units

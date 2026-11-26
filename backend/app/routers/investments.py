@@ -6,11 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from app import prices
+from app import benchmark, prices
 from app.balances import get_cash
 from app.clock import Today
 from app.db import get_db
-from app.holdings import Position, get_positions, get_trades, price_from_value, run_fifo
+from app.holdings import SETUP_NOTE, Position, get_positions, get_trades, price_from_value, run_fifo
 from app.models import (
     PRICE_UNITS,
     SHARE_UNITS,
@@ -25,6 +25,7 @@ from app.models import (
 )
 from app.schemas import (
     AccountHoldings,
+    Comparison,
     HoldingRead,
     HoldingsSetup,
     PriceInput,
@@ -40,8 +41,6 @@ router = APIRouter(prefix="/api", tags=["investments"])
 DbSession = Annotated[Session, Depends(get_db)]
 
 INVESTMENT_TYPES = (AccountType.BROKERAGE, AccountType.RETIREMENT)
-# Marks the balance adjustment a setup adds, so undoing the setup can find it again.
-SETUP_NOTE = "Holdings set up"
 
 
 def holding_read(position: Position) -> HoldingRead:
@@ -327,3 +326,16 @@ def delete_trade(trade_id: int, db: DbSession):
     check_not_oversold(db, account)  # deleting a buy can leave a later sell short
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/investments/comparison", response_model=Comparison)
+def compare_with_sp500(db: DbSession, today: Today, account_id: int | None = None):
+    """Your investments vs the same deposits put into the S&P 500 on the same days.
+
+    ?account_id=7 for one account; leave it out for every Brokerage and Retirement account.
+    """
+    if account_id is None:
+        account_ids = benchmark.investment_account_ids(db)
+    else:
+        account_ids = [get_investment_account(db, account_id).id]
+    return benchmark.compare(db, account_ids, today)

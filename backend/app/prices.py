@@ -14,7 +14,7 @@ from typing import Protocol
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models import PRICE_UNITS, Price, PriceSource, Security, Trade
+from app.models import PRICE_UNITS, BenchmarkPrice, Price, PriceSource, Security, Trade
 
 log = logging.getLogger(__name__)
 
@@ -32,6 +32,10 @@ class PriceProvider(Protocol):
         Returns {} when there's nothing (a weekend, or a ticker it doesn't know).
         Raises on network or source errors.
         """
+        ...
+
+    def closes_and_dividends(self, ticker: str, start: dt.date, end: dt.date) -> dict[dt.date, tuple[Decimal, Decimal]]:
+        """{day: (close, dividend per share paid that day)}, for a benchmark."""
         ...
 
 
@@ -54,6 +58,20 @@ class YFinanceProvider:
         # `close == close` skips NaN (a day with no close), since NaN never equals itself.
         return {stamp.date(): Decimal(repr(float(close))).quantize(QUOTE_STEP, rounding=ROUND_HALF_UP)
                 for stamp, close in history["Close"].items() if close == close}
+
+
+    def closes_and_dividends(self, ticker: str, start: dt.date, end: dt.date) -> dict[dt.date, tuple[Decimal, Decimal]]:
+        import yfinance
+
+        history = yfinance.Ticker(ticker).history(start=start, end=end + dt.timedelta(days=1), auto_adjust=False, actions=True)
+        result = {}
+        for stamp, row in history.iterrows():
+            if row["Close"] != row["Close"]:  # NaN
+                continue
+            close = Decimal(repr(float(row["Close"]))).quantize(QUOTE_STEP, rounding=ROUND_HALF_UP)
+            dividend = Decimal(repr(float(row.get("Dividends", 0) or 0))).quantize(QUOTE_STEP, rounding=ROUND_HALF_UP)
+            result[stamp.date()] = (close, dividend)
+        return result
 
 
 def to_price_units(dollars: Decimal) -> int:
@@ -124,6 +142,15 @@ def refresh_prices(db: Session, provider: PriceProvider, today: dt.date) -> Refr
                 row.price, row.source = price, PriceSource.YFINANCE
                 result.updated += 1
     db.commit()
+
+    # The S&P 500 benchmark, back to the first deposit into any investment account.
+    from app.benchmark import first_deposit_date  # here: app.benchmark imports this module
+
+    try:
+        result.updated += refresh_benchmark(db, provider, today, first_deposit_date(db))
+    except Exception as error:
+        log.warning("benchmark refresh failed: %s", error)
+        result.failed[f"{BENCHMARK} (S&P 500 benchmark)"] = str(error)[:200] or type(error).__name__
     last_refresh = result
     return result
 
@@ -147,6 +174,50 @@ def setup_mismatch(db: Session, security: Security, setup_day: dt.date, closes: 
     return (f"Yahoo's price for {security.ticker} (${market:,.2f} on {day:%b} {day.day}) is {difference:.0%} off the "
             f"value you entered (${yours:,.2f} a share), so it wasn't used. The ticker may name a different "
             "fund: switch it to manual prices, or undo the setup and fix the ticker.")
+
+
+BENCHMARK = "SPY"  # stands in for the S&P 500: a fund that holds it, dividends and all
+
+
+def refresh_benchmark(db: Session, provider: PriceProvider, today: dt.date, since: dt.date | None) -> int:
+    """Make sure benchmark prices cover `since` (the first deposit) to today. Returns rows added or changed.
+
+    Fetches only what's missing: the days before the oldest stored one, and the last few days.
+    """
+    if since is None:
+        return 0
+    oldest, newest = db.execute(
+        select(func.min(BenchmarkPrice.date), func.max(BenchmarkPrice.date)).where(BenchmarkPrice.symbol == BENCHMARK)
+    ).one()
+    ranges = []
+    want_from = since - dt.timedelta(days=7)  # so a deposit on a holiday has a close before it
+    if oldest is None:
+        ranges.append((want_from, today))
+    else:
+        # An older deposit turned up. (A few days' slack: the first stored close is often the
+        # Monday after a weekend deposit, and that's already covered.)
+        if since < oldest - dt.timedelta(days=4):
+            ranges.append((want_from, oldest))
+        ranges.append((newest - dt.timedelta(days=4), today))
+
+    changed = 0
+    for start, end in ranges:
+        days = provider.closes_and_dividends(BENCHMARK, start, end)
+        existing = {p.date: p for p in db.scalars(select(BenchmarkPrice).where(
+            BenchmarkPrice.symbol == BENCHMARK, BenchmarkPrice.date.in_(days)))}
+        for day, (close, dividend) in days.items():
+            if day > today:
+                continue
+            row = existing.get(day)
+            close_units, dividend_units = to_price_units(close), to_price_units(dividend)
+            if row is None:
+                db.add(BenchmarkPrice(symbol=BENCHMARK, date=day, close=close_units, dividend=dividend_units))
+                changed += 1
+            elif (row.close, row.dividend) != (close_units, dividend_units):
+                row.close, row.dividend = close_units, dividend_units
+                changed += 1
+    db.commit()
+    return changed
 
 
 def get_price_provider() -> PriceProvider:

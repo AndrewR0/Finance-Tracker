@@ -16,6 +16,9 @@ from sqlalchemy.orm import Session
 
 from app.models import PRICE_UNITS, SHARE_UNITS, Price, Security, Trade, TradeKind
 
+# Marks the balance adjustment a holdings setup adds (see app/routers/investments.py).
+SETUP_NOTE = "Holdings set up"
+
 # shares (units) x price (units) / CENTS_DIVISOR = cents
 CENTS_DIVISOR = SHARE_UNITS * PRICE_UNITS // 100
 
