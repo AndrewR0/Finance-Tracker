@@ -285,3 +285,25 @@ class BenchmarkPrice(Base):
     date: Mapped[dt.date]
     close: Mapped[int]  # units of 1/PRICE_UNITS of a dollar
     dividend: Mapped[int] = mapped_column(default=0, server_default="0")  # per share, same units
+
+
+class RetirementSettings(Base):
+    """Your retirement estimator settings. There is only ever one row (id 1).
+
+    Rates are whole basis points (1/100 of a percent: 400 = 4.00%), so no floats are stored.
+    A NULL override means "use what my transactions say".
+    """
+
+    __tablename__ = "retirement_settings"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    birth_year: Mapped[int | None]
+    retire_age: Mapped[int | None]  # a target to compare with; the projection doesn't need it
+    withdrawal_rate_bp: Mapped[int] = mapped_column(default=400, server_default="400")
+    real_return_bp: Mapped[int] = mapped_column(default=700, server_default="700")  # after inflation
+    # How much yearly returns swing around real_return_bp (one standard deviation), for the
+    # Monte Carlo runs. Stocks have historically been around 15-20%.
+    volatility_bp: Mapped[int] = mapped_column(default=1500, server_default="1500")
+    spending_override_cents: Mapped[int | None]  # a yearly retirement budget instead of actual spending
+    contribution_override_cents: Mapped[int | None]  # yearly, instead of what the last 12 months show
+    k401_yearly_cents: Mapped[int] = mapped_column(default=0, server_default="0")  # payroll + match

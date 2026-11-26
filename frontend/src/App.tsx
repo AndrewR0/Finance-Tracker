@@ -10,6 +10,7 @@ import { Goals } from "./pages/Goals";
 import { Import } from "./pages/Import";
 import { Investments } from "./pages/Investments";
 import { Recurring } from "./pages/Recurring";
+import { Retirement } from "./pages/Retirement";
 import { Transactions } from "./pages/Transactions";
 import { PanelProvider } from "./state/panel";
 import { PeriodProvider } from "./state/period";
@@ -28,6 +29,7 @@ export function App() {
             <Route path="/accounts" element={<Accounts />} />
             <Route path="/categories" element={<Categories />} />
             <Route path="/investments" element={<Investments />} />
+            <Route path="/retirement" element={<Retirement />} />
             <Route path="/recurring" element={<Recurring />} />
             <Route path="/goals" element={<Goals />} />
             <Route path="*" element={<Navigate to="/" replace />} />

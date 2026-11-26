@@ -12,7 +12,18 @@ from sqlalchemy.orm import Session
 from app import prices
 from app.db import engine
 from app.frontend import mount_frontend
-from app.routers import accounts, categories, dashboard, goals, imports, investments, recurring, transactions, transfers
+from app.routers import (
+    accounts,
+    categories,
+    dashboard,
+    goals,
+    imports,
+    investments,
+    recurring,
+    retirement,
+    transactions,
+    transfers,
+)
 
 log = logging.getLogger(__name__)
 
@@ -64,6 +75,7 @@ app.include_router(imports.router)
 app.include_router(recurring.router)
 app.include_router(goals.router)
 app.include_router(investments.router)
+app.include_router(retirement.router)
 
 
 @app.get("/api/health")

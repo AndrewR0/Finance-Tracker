@@ -18,6 +18,13 @@ const ICONS: Record<string, ReactNode> = {
     </>
   ),
   investments: <path d="M4 18l5-6 4 3 7-9" />,
+  retirement: (
+    <>
+      <path d="M12 3v3M12 18v3M5 12H3M21 12h-2" />
+      <circle cx="12" cy="12" r="6" />
+      <path d="M12 9v3l2 2" />
+    </>
+  ),
   recurring: <path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4" />,
   goals: (
     <>
@@ -34,6 +41,7 @@ const LINKS: { to: string; label: string; icon: string; soon?: boolean }[] = [
   { to: "/accounts", label: "Accounts", icon: "accounts" },
   { to: "/categories", label: "Categories", icon: "categories" },
   { to: "/investments", label: "Investments", icon: "investments" },
+  { to: "/retirement", label: "Retirement", icon: "retirement" },
   { to: "/recurring", label: "Recurring", icon: "recurring" },
   { to: "/goals", label: "Goals", icon: "goals" },
 ];

@@ -32,6 +32,10 @@ export function useComparison(accountId: number | null) {
   });
 }
 
+export function useRetirement() {
+  return useQuery({ queryKey: ["retirement"], queryFn: api.retirement });
+}
+
 export function usePriceStatus() {
   return useQuery({ queryKey: ["price-status"], queryFn: api.priceStatus });
 }

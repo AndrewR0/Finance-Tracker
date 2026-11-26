@@ -694,6 +694,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/retirement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retirement Inputs */
+        get: operations["retirement_inputs_api_retirement_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/retirement/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save Settings
+         * @description Replace all settings. Send null for an override to go back to what your data says.
+         */
+        put: operations["save_settings_api_retirement_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -1392,6 +1429,110 @@ export interface components {
             next_date: string;
             /** Ignored */
             ignored: boolean;
+        };
+        /** RetirementAccount */
+        RetirementAccount: {
+            /** Account Id */
+            account_id: number;
+            /** Name */
+            name: string;
+            type: components["schemas"]["AccountType"];
+            /** In Net Worth */
+            in_net_worth: boolean;
+            /** Value Cents */
+            value_cents: number;
+        };
+        /**
+         * RetirementInputs
+         * @description What the estimator starts from: your settings, and what your data says.
+         */
+        RetirementInputs: {
+            settings: components["schemas"]["RetirementSettingsRead"];
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /** Spending 12M Cents */
+            spending_12m_cents: number;
+            /** Invested 12M Cents */
+            invested_12m_cents: number;
+            /** K401 12M Cents */
+            k401_12m_cents: number;
+            /** Balance Cents */
+            balance_cents: number;
+            /** Accounts */
+            accounts: components["schemas"]["RetirementAccount"][];
+        };
+        /**
+         * RetirementSettingsIn
+         * @description PUT body: all settings at once. Rates are basis points: 400 = 4.00%.
+         */
+        RetirementSettingsIn: {
+            /** Birth Year */
+            birth_year?: number | null;
+            /** Retire Age */
+            retire_age?: number | null;
+            /**
+             * Withdrawal Rate Bp
+             * @default 400
+             */
+            withdrawal_rate_bp: number;
+            /**
+             * Real Return Bp
+             * @default 700
+             */
+            real_return_bp: number;
+            /**
+             * Volatility Bp
+             * @default 1500
+             */
+            volatility_bp: number;
+            /** Spending Override Cents */
+            spending_override_cents?: number | null;
+            /** Contribution Override Cents */
+            contribution_override_cents?: number | null;
+            /**
+             * K401 Yearly Cents
+             * @default 0
+             */
+            k401_yearly_cents: number;
+        };
+        /** RetirementSettingsRead */
+        RetirementSettingsRead: {
+            /** Birth Year */
+            birth_year?: number | null;
+            /** Retire Age */
+            retire_age?: number | null;
+            /**
+             * Withdrawal Rate Bp
+             * @default 400
+             */
+            withdrawal_rate_bp: number;
+            /**
+             * Real Return Bp
+             * @default 700
+             */
+            real_return_bp: number;
+            /**
+             * Volatility Bp
+             * @default 1500
+             */
+            volatility_bp: number;
+            /** Spending Override Cents */
+            spending_override_cents?: number | null;
+            /** Contribution Override Cents */
+            contribution_override_cents?: number | null;
+            /**
+             * K401 Yearly Cents
+             * @default 0
+             */
+            k401_yearly_cents: number;
         };
         /**
          * SecurityKind
@@ -3017,6 +3158,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Comparison"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retirement_inputs_api_retirement_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetirementInputs"];
+                };
+            };
+        };
+    };
+    save_settings_api_retirement_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RetirementSettingsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetirementSettingsRead"];
                 };
             };
             /** @description Validation Error */

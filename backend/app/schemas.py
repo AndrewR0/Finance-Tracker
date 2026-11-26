@@ -573,3 +573,45 @@ class Comparison(BaseModel):
     tracked_since: dt.date | None  # from when "yours" is known in the points
     points: list[ComparisonPoint]  # weekly, from start to today
 
+
+
+# ---- Retirement estimator ----
+
+class RetirementSettingsIn(BaseModel):
+    """PUT body: all settings at once. Rates are basis points: 400 = 4.00%."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    birth_year: Annotated[int, Field(ge=1900, le=2100)] | None = None
+    retire_age: Annotated[int, Field(ge=18, le=100)] | None = None
+    withdrawal_rate_bp: Annotated[StrictInt, Field(ge=50, le=2000)] = 400  # 0.5% to 20%
+    real_return_bp: Annotated[StrictInt, Field(ge=-500, le=2000)] = 700  # -5% to 20%, after inflation
+    volatility_bp: Annotated[StrictInt, Field(ge=0, le=5000)] = 1500  # yearly swing, 0% to 50%
+    spending_override_cents: Annotated[StrictInt, Field(ge=0)] | None = None
+    contribution_override_cents: Annotated[StrictInt, Field(ge=0)] | None = None
+    k401_yearly_cents: Annotated[StrictInt, Field(ge=0)] = 0
+
+
+class RetirementSettingsRead(RetirementSettingsIn):
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RetirementAccount(BaseModel):
+    account_id: int
+    name: str
+    type: AccountType
+    in_net_worth: bool
+    value_cents: int
+
+
+class RetirementInputs(BaseModel):
+    """What the estimator starts from: your settings, and what your data says."""
+
+    settings: RetirementSettingsRead
+    period_start: dt.date  # the last 12 months: period_start to today
+    period_end: dt.date
+    spending_12m_cents: int  # same rules as the dashboard's Spending
+    invested_12m_cents: int  # transfers into Brokerage/Retirement accounts (the dashboard's "invested")
+    k401_12m_cents: int  # 401k contributions recorded as trades
+    balance_cents: int  # all Brokerage and Retirement accounts today
+    accounts: list[RetirementAccount]

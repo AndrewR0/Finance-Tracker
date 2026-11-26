@@ -1888,3 +1888,16 @@ table.names tr.child td:first-child {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Retirement page */
+.retire-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+@media (max-width: 760px) {
+  .retire-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
