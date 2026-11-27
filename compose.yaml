@@ -16,3 +16,20 @@ services:
     volumes:
       # finance.db and its backups live in ./data on the server, outside the container.
       - ./data:/data
+
+  # A copy of the app on made-up data, for showing friends. Same code, its own database
+  # (./demo-data/demo.db); it never sees ./data. Fill or reset it with:
+  #   docker compose exec finance-demo python scripts/seed_demo.py /data/demo.db --reset
+  finance-demo:
+    build: .
+    container_name: finance-tracker-demo
+    restart: unless-stopped
+    ports:
+      # Same rule as above: home network and Tailscale only, never forwarded on the router.
+      - "8001:8000"
+    environment:
+      - TZ=America/New_York
+      - FINANCE_DB_URL=sqlite:////data/demo.db
+      - FINANCE_DEMO=1
+    volumes:
+      - ./demo-data:/data

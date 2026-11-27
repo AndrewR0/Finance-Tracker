@@ -22,3 +22,6 @@ Thumbs.db
 
 CLAUDE.md
 docs
+
+# Demo copy of the app (made-up data, on the server)
+demo-data/

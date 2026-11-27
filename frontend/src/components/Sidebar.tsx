@@ -1,7 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 
-import { useBackupStatus } from "../api/hooks";
+import { useBackupStatus, useHealth } from "../api/hooks";
 import { backupLabel } from "../lib/backups";
 
 const ICONS: Record<string, ReactNode> = {
@@ -82,6 +82,7 @@ export function Sidebar() {
       <div className="brand">
         <i />
         Finance Tracker
+        <DemoBadge />
       </div>
       <nav className="nav" ref={nav}>
         {LINKS.map((link) => (
@@ -100,6 +101,8 @@ export function Sidebar() {
 /** "Backed up today, 3:00 AM", or a warning when the nightly backup seems to have stopped. */
 function BackupLine() {
   const status = useBackupStatus().data;
+  const demo = useHealth().data?.demo;
+  if (demo) return <div className="foot">Demo · every number here is made up</div>;
   if (!status) return <div className="foot">Your data stays on your own server</div>;
   const label = backupLabel(status.last_backup_at ?? null, new Date());
   return (
@@ -107,5 +110,16 @@ function BackupLine() {
       {label.stale ? "⚠ " : ""}
       {label.text}
     </div>
+  );
+}
+
+/** A "DEMO" label on the copy of the app that runs on made-up data (for showing friends). */
+function DemoBadge() {
+  const demo = useHealth().data?.demo;
+  if (!demo) return null;
+  return (
+    <span className="demo-badge" title="This copy runs on made-up data. None of it is real.">
+      DEMO
+    </span>
   );
 }

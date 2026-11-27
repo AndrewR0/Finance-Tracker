@@ -2099,3 +2099,16 @@ table.names tr.child td:first-child {
   border-radius: 2px;
   background: var(--s2);
 }
+
+/* The "DEMO" label on the made-up-data copy of the app */
+.demo-badge {
+  margin-left: 8px;
+  padding: 1px 7px;
+  border: 1px solid var(--cyan);
+  border-radius: 6px;
+  color: var(--cyan);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 6px var(--cyan);
+  vertical-align: middle;
+}

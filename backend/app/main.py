@@ -86,7 +86,8 @@ app.include_router(review.router)
 
 @app.get("/api/health")
 def healthcheck():
-    return {"status": "ok"}
+    # demo: this copy runs on made-up data (FINANCE_DEMO=1); the sidebar shows a DEMO label.
+    return {"status": "ok", "demo": os.environ.get("FINANCE_DEMO") == "1"}
 
 
 # Last: its catch-all route must come after every /api route.
