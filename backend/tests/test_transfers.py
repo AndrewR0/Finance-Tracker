@@ -152,3 +152,60 @@ def test_read_one_transfer(client, checking, visa):
 
 def test_read_missing_transfer_is_404(client):
     assert client.get("/api/transfers/999").status_code == 404
+
+
+# ---- changing a transfer's accounts ----
+
+def _accounts(client):
+    def post(name, type):
+        return client.post("/api/accounts", json={"name": name, "type": type}).json()["id"]
+    return post("Checking", "checking"), post("Savings", "savings"), post("Roth IRA", "retirement")
+
+
+def _balances(client):
+    return {a["name"]: a["balance_cents"] for a in client.get("/api/accounts").json()}
+
+
+def test_move_the_to_side_to_another_account(client):
+    checking, savings, roth = _accounts(client)
+    transfer = client.post("/api/transfers", json={"from_account_id": checking, "to_account_id": savings,
+                                                   "date": "2026-10-01", "amount_cents": 5000}).json()
+
+    response = client.patch(f"/api/transfers/{transfer['id']}", json={"to_account_id": roth})
+
+    assert response.status_code == 200, response.json()
+    assert response.json()["to_leg"]["account_id"] == roth
+    assert _balances(client) == {"Checking": -5000, "Roth IRA": 5000, "Savings": 0}
+
+
+def test_swap_both_sides(client):
+    checking, savings, _ = _accounts(client)
+    transfer = client.post("/api/transfers", json={"from_account_id": checking, "to_account_id": savings,
+                                                   "date": "2026-10-01", "amount_cents": 5000}).json()
+
+    response = client.patch(f"/api/transfers/{transfer['id']}", json={"from_account_id": savings, "to_account_id": checking})
+
+    assert response.status_code == 200, response.json()
+    assert _balances(client)["Checking"] == 5000
+
+
+def test_same_account_on_both_sides_is_refused(client):
+    checking, savings, _ = _accounts(client)
+    transfer = client.post("/api/transfers", json={"from_account_id": checking, "to_account_id": savings,
+                                                   "date": "2026-10-01", "amount_cents": 5000}).json()
+
+    response = client.patch(f"/api/transfers/{transfer['id']}", json={"to_account_id": checking})
+
+    assert response.status_code == 422
+
+
+def test_cant_move_into_a_closed_account(client):
+    checking, savings, roth = _accounts(client)
+    client.post(f"/api/accounts/{roth}/close")
+    transfer = client.post("/api/transfers", json={"from_account_id": checking, "to_account_id": savings,
+                                                   "date": "2026-10-01", "amount_cents": 5000}).json()
+
+    response = client.patch(f"/api/transfers/{transfer['id']}", json={"to_account_id": roth})
+
+    assert response.status_code in (404, 409, 422)
+    assert _balances(client)["Savings"] == 5000  # unchanged

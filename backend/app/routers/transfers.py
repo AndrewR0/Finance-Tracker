@@ -74,6 +74,19 @@ def update_transfer(transfer_id: int, payload: TransferUpdate, db: DbSession):
     from_leg = transfer.from_leg
     to_leg = transfer.to_leg
 
+    # Changing accounts just repoints a leg: the amount, date and history stay. Each leg's
+    # balance effect moves with it, so both accounts' balances update by themselves.
+    new_from = changes.get("from_account_id", from_leg.account_id)
+    new_to = changes.get("to_account_id", to_leg.account_id)
+    if new_from == new_to:
+        raise HTTPException(status_code=422, detail="A transfer needs two different accounts.")
+    if new_from != from_leg.account_id:
+        get_open_account(db, new_from)  # a closed account can stay on old transfers, but can't be newly chosen
+        from_leg.account_id = new_from
+    if new_to != to_leg.account_id:
+        get_open_account(db, new_to)
+        to_leg.account_id = new_to
+
     if "date" in changes:
         from_leg.date = changes["date"]
         to_leg.date = changes["date"]

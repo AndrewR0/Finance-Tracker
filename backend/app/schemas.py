@@ -190,6 +190,8 @@ class TransferUpdate(BaseModel):
     amount_cents: Annotated[StrictInt, Field(gt=0)] = None
     description: Notes | None = None
     category_id: int | None = None
+    from_account_id: int = None  # move the "money out" side to another account
+    to_account_id: int = None  # move the "money in" side to another account
 
 
 class TransferRead(BaseModel):

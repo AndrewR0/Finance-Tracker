@@ -1918,6 +1918,10 @@ export interface components {
             description?: string | null;
             /** Category Id */
             category_id?: number | null;
+            /** From Account Id */
+            from_account_id?: number;
+            /** To Account Id */
+            to_account_id?: number;
         };
         /** UpcomingCharge */
         UpcomingCharge: {

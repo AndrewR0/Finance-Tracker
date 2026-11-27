@@ -142,6 +142,9 @@ function PanelForm({ initial, editing }: { initial: FormValues; editing: Editing
   const toId = form.toAccountId || String(openAccounts.find((a) => String(a.id) !== fromId)?.id ?? "");
 
   const isTransfer = form.type === "transfer";
+  // Account choices for a transfer: open accounts, plus whichever accounts it already uses
+  // (an old transfer can point at an account closed since; it stays selectable as-is).
+  const transferAccounts = accounts.filter((a) => a.closed_at === null || String(a.id) === fromId || String(a.id) === toId);
   const update = (changes: Partial<FormValues>) => setForm((f) => ({ ...f, ...changes }));
 
   const save = useSave(async (cents: number) => {
@@ -149,6 +152,8 @@ function PanelForm({ initial, editing }: { initial: FormValues; editing: Editing
     if (isTransfer) {
       if (editing) {
         return api.updateTransfer(editing.id, {
+          from_account_id: Number(fromId),
+          to_account_id: Number(toId),
           date: form.date,
           amount_cents: Math.abs(cents),
           description: form.description.trim() || null,
@@ -277,9 +282,9 @@ function PanelForm({ initial, editing }: { initial: FormValues; editing: Editing
           <div className="two arrow">
             <label className="field">
               From
-              <select className="select" value={fromId} disabled={editing !== null} onChange={(e) => update({ accountId: e.target.value })}>
-                {openAccounts.map((a) => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
+              <select className="select" value={fromId} onChange={(e) => update({ accountId: e.target.value })}>
+                {transferAccounts.map((a) => (
+                  <option key={a.id} value={a.id}>{a.name}{a.closed_at === null ? "" : " (closed)"}</option>
                 ))}
               </select>
               {!editing && <BalanceHint accounts={accounts} id={fromId} delta={-cents} />}
@@ -287,15 +292,14 @@ function PanelForm({ initial, editing }: { initial: FormValues; editing: Editing
             <span style={{ color: "var(--pink-soft)", paddingBottom: 28, textShadow: "0 0 8px var(--pink)" }}>→</span>
             <label className="field">
               To
-              <select className="select" value={toId} disabled={editing !== null} onChange={(e) => update({ toAccountId: e.target.value })}>
-                {openAccounts.map((a) => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
+              <select className="select" value={toId} onChange={(e) => update({ toAccountId: e.target.value })}>
+                {transferAccounts.map((a) => (
+                  <option key={a.id} value={a.id}>{a.name}{a.closed_at === null ? "" : " (closed)"}</option>
                 ))}
               </select>
               {!editing && <BalanceHint accounts={accounts} id={toId} delta={cents} />}
             </label>
           </div>
-          {editing && <span className="hint">The accounts can't be changed. Delete the transfer and add it again instead.</span>}
           <label className="field">
             Description
             <input className="input" placeholder="Credit card payment" value={form.description} onChange={(e) => update({ description: e.target.value })} />
