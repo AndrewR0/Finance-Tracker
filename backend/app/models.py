@@ -310,3 +310,21 @@ class RetirementSettings(Base):
     spending_override_cents: Mapped[int | None]  # a yearly retirement budget instead of actual spending
     contribution_override_cents: Mapped[int | None]  # yearly, instead of what the last 12 months show
     k401_yearly_cents: Mapped[int] = mapped_column(default=0, server_default="0")  # payroll + match
+
+
+class Budget(Base):
+    """A monthly budget for one expense category, from start_month on.
+
+    Changing a budget adds a row from that month instead of editing the old one, so past months
+    keep the budget they had. The budget for a month is the newest row starting on or before it;
+    amount 0 means "no budget from here on". A category's budget covers its subcategories too.
+    """
+
+    __tablename__ = "budgets"
+    __table_args__ = (UniqueConstraint("category_id", "start_month", name="uq_budget_per_month"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"), index=True)
+    start_month: Mapped[dt.date]  # always the 1st of a month
+    amount_cents: Mapped[int]
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())

@@ -629,3 +629,38 @@ class ChecklistItem(BaseModel):
     detail: str
     done: bool
     link: str
+
+
+# ---- Budgets ----
+
+class BudgetRow(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    category_id: int
+    name: str
+    parent_id: int | None
+    budget_cents: int | None  # None: no budget this month
+    spent_cents: int  # a parent's includes its subcategories
+    suggested_cents: int  # average monthly spending over the previous 6 months
+
+
+class MonthBudgetsRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    month: dt.date  # the 1st
+    days_in_month: int
+    days_elapsed: int  # for "where you should be by today"
+    rows: list[BudgetRow]  # every expense category, parents before their subcategories
+    budgeted_cents: int
+    spent_budgeted_cents: int
+    unbudgeted_cents: int
+    total_spent_cents: int
+
+
+class BudgetSet(BaseModel):
+    """Set a category's monthly budget from `month` on. null (or 0) removes it from that month on."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    month: dt.date  # any day in the month; the budget starts on its 1st
+    amount_cents: Annotated[StrictInt, Field(ge=0)] | None

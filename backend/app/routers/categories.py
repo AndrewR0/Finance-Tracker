@@ -3,12 +3,12 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
-from app.models import Category, CategoryKind, Transaction
+from app.models import Budget, Category, CategoryKind, Transaction
 from app.schemas import CategoryCreate, CategoryDeleted, CategoryRead, CategoryTree, CategoryUpdate
 
 router = APIRouter(prefix="/api/categories", tags=["categories"])
@@ -152,6 +152,7 @@ def delete_category(category_id: int, db: DbSession, move_to: int | None = None)
     moved = db.execute(
         update(Transaction).where(Transaction.category_id.in_(doomed_ids)).values(category_id=move_to)
     ).rowcount
+    db.execute(delete(Budget).where(Budget.category_id.in_(doomed_ids)))  # a deleted category's budgets go too
     for sub in category.subcategories:  # children first, so the parent's id is free to delete
         db.delete(sub)
     db.flush()
