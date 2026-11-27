@@ -32,6 +32,14 @@ export function useComparison(accountId: number | null) {
   });
 }
 
+export function useBudgets(month: string) {
+  return useQuery({
+    queryKey: ["budgets", month],
+    queryFn: () => api.budgets(month),
+    placeholderData: (previous) => previous, // keep the table while the next month loads
+  });
+}
+
 export function useChecklist() {
   return useQuery({ queryKey: ["checklist"], queryFn: api.checklist });
 }

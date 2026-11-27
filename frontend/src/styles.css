@@ -1932,3 +1932,41 @@ table.names tr.child td:first-child {
 .checklist li.done .tick {
   color: var(--good);
 }
+
+/* Budgets */
+.budget-bar {
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--track);
+  overflow: visible;
+}
+.budget-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+  background: var(--good);
+}
+.budget-bar.ahead i {
+  background: var(--s2);
+  opacity: 0.6; /* lighter than "over" */
+}
+.budget-bar.over i {
+  background: var(--bad);
+}
+.budget-bar b {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 16px;
+  background: var(--ink2);
+}
+.budget-edit {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+}
+.budgettable tr.child td:first-child {
+  padding-left: 22px;
+}

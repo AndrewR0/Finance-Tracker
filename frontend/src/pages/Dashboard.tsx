@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import type { CategorySpending, Pace, Period, Summary } from "../api/client";
 import {
   useAccounts,
+  useBudgets,
   useCashFlow,
   useCategories,
   useChecklist,
@@ -19,8 +20,9 @@ import { PaceChart } from "../charts/PaceChart";
 import { ChangeBadge, changeOf } from "../components/ChangeBadge";
 import { PeriodPicker } from "../components/PeriodPicker";
 import { TransactionTable } from "../components/TransactionTable";
+import { budgetStatus } from "../lib/budgets";
 import { indexCategories } from "../lib/categories";
-import { comparisonName, formatRange, formatShortDate, monthName, periodTitle } from "../lib/dates";
+import { comparisonName, formatRange, formatShortDate, monthName, periodTitle, todayISO } from "../lib/dates";
 import { goalLine, percentOf } from "../lib/goals";
 import { formatMoney0 } from "../lib/money";
 import { formatCharge } from "../lib/recurring";
@@ -91,6 +93,7 @@ export function Dashboard() {
 
         <SpendingCard rows={spending} period={period} />
         <ChecklistCard />
+        <BudgetsCard />
         <UpcomingCard />
         <RecentCard />
         <GoalsCard />
@@ -276,6 +279,43 @@ const UPCOMING_DAYS = 14;
  * This month's chores (reconciles, typed-in prices, 401k contributions, cash to invest).
  * Worked out from your data, so items tick themselves off once the data shows they're done.
  */
+/** This month's budgets that are over, or spending faster than the month. Hidden when none are. */
+function BudgetsCard() {
+  const month = `${todayISO().slice(0, 7)}-01`;
+  const data = useBudgets(month).data;
+  if (!data) return null;
+  const watch = data.rows
+    .filter((r) => r.budget_cents !== null)
+    .map((r) => ({ row: r, status: budgetStatus(r.spent_cents, r.budget_cents as number, data.days_elapsed, data.days_in_month) }))
+    .filter((x) => x.status !== "under")
+    .sort((a, b) => b.row.spent_cents / (b.row.budget_cents as number) - a.row.spent_cents / (a.row.budget_cents as number));
+  if (watch.length === 0) return null;
+
+  return (
+    <div className="card span2">
+      <h3>
+        Budgets to watch{" "}
+        <small>
+          day {data.days_elapsed} of {data.days_in_month} · <Link className="link" to="/budgets">All →</Link>
+        </small>
+      </h3>
+      <table style={{ marginTop: 6 }}>
+        <tbody>
+          {watch.slice(0, 6).map(({ row, status }) => (
+            <tr key={row.category_id}>
+              <td>{row.name}</td>
+              <td className={`r num ${status === "over" ? "down" : ""}`}>
+                {formatMoney0(row.spent_cents)} / {formatMoney0(row.budget_cents as number)}
+              </td>
+              <td className="r muted" style={{ fontSize: 12.5 }}>{status === "over" ? "over" : "ahead of pace"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function ChecklistCard() {
   const items = useChecklist().data;
   if (!items || items.length === 0) return null;

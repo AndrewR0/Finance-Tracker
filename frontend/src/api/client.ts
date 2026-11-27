@@ -36,6 +36,8 @@ export type Trade = Schemas["TradeRead"];
 export type Comparison = Schemas["Comparison"];
 export type RetirementInputs = Schemas["RetirementInputs"];
 export type ChecklistItem = Schemas["ChecklistItem"];
+export type MonthBudgets = Schemas["MonthBudgetsRead"];
+export type BudgetRow = Schemas["BudgetRow"];
 export type TradeKind = Schemas["TradeKind"];
 
 /** The backend answered with an error. message is FastAPI's "detail", made readable. */
@@ -149,6 +151,10 @@ export const api = {
     ),
   recurring: () => request<Recurring[]>("GET", "/api/recurring"),
   checklist: () => request<ChecklistItem[]>("GET", "/api/dashboard/checklist"),
+  /** month: the 1st, like "2026-11-01". */
+  budgets: (month: string) => request<MonthBudgets>("GET", "/api/budgets" + query({ month })),
+  setBudget: (categoryId: number, body: Schemas["BudgetSet"]) =>
+    request<MonthBudgets>("PUT", `/api/budgets/${categoryId}`, body),
 
   holdings: () => request<AccountHoldings[]>("GET", "/api/holdings"),
   setUpHoldings: (accountId: number, body: Schemas["HoldingsSetup"]) =>

@@ -33,6 +33,13 @@ const ICONS: Record<string, ReactNode> = {
     </>
   ),
   categories: <path d="M4 7h7l2 2h7v10H4z" />,
+  budgets: (
+    <>
+      <rect x="4" y="5" width="16" height="4" rx="1" />
+      <rect x="4" y="11" width="11" height="4" rx="1" />
+      <rect x="4" y="17" width="7" height="3" rx="1" />
+    </>
+  ),
 };
 
 const LINKS: { to: string; label: string; icon: string; soon?: boolean }[] = [
@@ -40,6 +47,7 @@ const LINKS: { to: string; label: string; icon: string; soon?: boolean }[] = [
   { to: "/transactions", label: "Transactions", icon: "transactions" },
   { to: "/accounts", label: "Accounts", icon: "accounts" },
   { to: "/categories", label: "Categories", icon: "categories" },
+  { to: "/budgets", label: "Budgets", icon: "budgets" },
   { to: "/investments", label: "Investments", icon: "investments" },
   { to: "/retirement", label: "Retirement", icon: "retirement" },
   { to: "/recurring", label: "Recurring", icon: "recurring" },

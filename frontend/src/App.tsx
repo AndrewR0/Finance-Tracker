@@ -4,6 +4,7 @@ import { ApiBanner } from "./components/ApiBanner";
 import { Sidebar } from "./components/Sidebar";
 import { TransactionPanel } from "./components/TransactionPanel";
 import { Accounts } from "./pages/Accounts";
+import { Budgets } from "./pages/Budgets";
 import { Categories } from "./pages/Categories";
 import { Dashboard } from "./pages/Dashboard";
 import { Goals } from "./pages/Goals";
@@ -28,6 +29,7 @@ export function App() {
             <Route path="/import" element={<Import />} />
             <Route path="/accounts" element={<Accounts />} />
             <Route path="/categories" element={<Categories />} />
+            <Route path="/budgets" element={<Budgets />} />
             <Route path="/investments" element={<Investments />} />
             <Route path="/retirement" element={<Retirement />} />
             <Route path="/recurring" element={<Recurring />} />

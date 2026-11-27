@@ -751,6 +751,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/budgets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Month Budgets
+         * @description Budgets vs spending for ?month=2026-11-01 (any day in it works; defaults to this month).
+         */
+        get: operations["get_month_budgets_api_budgets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/budgets/{category_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Budget
+         * @description Set (or remove, with null) a category's budget from that month on. Earlier months keep theirs.
+         */
+        put: operations["set_budget_api_budgets__category_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -865,6 +905,34 @@ export interface components {
             /** Balance Cents */
             balance_cents: number;
             investment: components["schemas"]["InvestmentRead"] | null;
+        };
+        /** BudgetRow */
+        BudgetRow: {
+            /** Category Id */
+            category_id: number;
+            /** Name */
+            name: string;
+            /** Parent Id */
+            parent_id: number | null;
+            /** Budget Cents */
+            budget_cents: number | null;
+            /** Spent Cents */
+            spent_cents: number;
+            /** Suggested Cents */
+            suggested_cents: number;
+        };
+        /**
+         * BudgetSet
+         * @description Set a category's monthly budget from `month` on. null (or 0) removes it from that month on.
+         */
+        BudgetSet: {
+            /**
+             * Month
+             * Format: date
+             */
+            month: string;
+            /** Amount Cents */
+            amount_cents: number | null;
         };
         /**
          * Cadence
@@ -1293,6 +1361,28 @@ export interface components {
             cost_basis_cents: number | null;
             /** Unrealized Gain Cents */
             unrealized_gain_cents: number | null;
+        };
+        /** MonthBudgetsRead */
+        MonthBudgetsRead: {
+            /**
+             * Month
+             * Format: date
+             */
+            month: string;
+            /** Days In Month */
+            days_in_month: number;
+            /** Days Elapsed */
+            days_elapsed: number;
+            /** Rows */
+            rows: components["schemas"]["BudgetRow"][];
+            /** Budgeted Cents */
+            budgeted_cents: number;
+            /** Spent Budgeted Cents */
+            spent_budgeted_cents: number;
+            /** Unbudgeted Cents */
+            unbudgeted_cents: number;
+            /** Total Spent Cents */
+            total_spent_cents: number;
         };
         /** NewAccount */
         NewAccount: {
@@ -3273,6 +3363,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RetirementSettingsRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_month_budgets_api_budgets_get: {
+        parameters: {
+            query?: {
+                month?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonthBudgetsRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_budget_api_budgets__category_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                category_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BudgetSet"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonthBudgetsRead"];
                 };
             };
             /** @description Validation Error */
