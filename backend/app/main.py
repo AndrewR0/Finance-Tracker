@@ -14,6 +14,7 @@ from app.db import engine
 from app.frontend import mount_frontend
 from app.routers import (
     accounts,
+    backups,
     budgets,
     categories,
     dashboard,
@@ -78,6 +79,7 @@ app.include_router(goals.router)
 app.include_router(investments.router)
 app.include_router(retirement.router)
 app.include_router(budgets.router)
+app.include_router(backups.router)
 
 
 @app.get("/api/health")

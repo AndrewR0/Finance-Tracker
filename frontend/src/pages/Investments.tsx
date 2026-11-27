@@ -234,7 +234,7 @@ function AccountCard({ account }: { account: AccountHoldings }) {
             <td>Total</td>
             <td />
             <td />
-            <td className="r num">{formatMoney(account.cost_basis_cents)}</td>
+            <td className="r num" data-label="Cost">{formatMoney(account.cost_basis_cents)}</td>
             <td className="r num">{formatMoney(account.value_cents)}</td>
             <td className="r">
               <Gain cents={account.gain_cents} cost={account.cost_basis_cents} />
@@ -437,7 +437,7 @@ function TradeHistory({ accountId }: { accountId: number }) {
   if (trades === undefined) return <div className="muted trade-history">Loading…</div>;
   return (
     <div className="trade-history">
-      <table className="accttable">
+      <table className="accttable tradetable">
         <tbody>
           {trades.map((t) => (
             <tr key={t.id}>
@@ -446,7 +446,7 @@ function TradeHistory({ accountId }: { accountId: number }) {
               <td>
                 <b>{t.ticker}</b>
               </td>
-              <td className="r num">{t.shares ? formatShares(t.shares) : ""}</td>
+              <td className="r num" data-label={t.shares ? "Shares" : undefined}>{t.shares ? formatShares(t.shares) : ""}</td>
               <td className="r num">{formatMoney(t.amount_cents)}</td>
               <td className="r">
                 {t.kind !== "opening" &&
@@ -503,8 +503,8 @@ function HoldingRow({ holding: h }: { holding: Holding }) {
         <td>
           <b>{h.ticker}</b> <span className="muted">{h.name}</span>
         </td>
-        <td className="r num">{formatShares(h.shares)}</td>
-        <td className="r num" title={h.price_date ? `Price from ${formatShortDate(h.price_date)}` : "No price yet"}>
+        <td className="r num" data-label="Shares">{formatShares(h.shares)}</td>
+        <td className="r num" data-label="Price" title={h.price_date ? `Price from ${formatShortDate(h.price_date)}` : "No price yet"}>
           {h.price === null ? "—" : formatPrice(h.price)}
           {h.price_source === "manual" && (
             <button className="icon-btn" title={`Update ${h.ticker}'s price`} onClick={() => setEditing((open) => !open)}>
@@ -512,7 +512,7 @@ function HoldingRow({ holding: h }: { holding: Holding }) {
             </button>
           )}
         </td>
-        <td className="r num">{formatMoney(h.cost_basis_cents)}</td>
+        <td className="r num" data-label="Cost">{formatMoney(h.cost_basis_cents)}</td>
         <td className="r num">{formatMoney(h.value_cents)}</td>
         <td className="r">
           <Gain cents={h.gain_cents} cost={h.cost_basis_cents} />
@@ -617,7 +617,7 @@ function SetUpHoldings({ account, onDone }: { account: Account; onDone: () => vo
         Today the app has {account.name} at {formatMoney(account.balance_cents)}. Enter what you hold now; the total
         below should come out close to your provider's.
       </p>
-      <table className="accttable setup-table">
+      <table className="setup-table">
         <thead>
           <tr>
             <th>Ticker</th>

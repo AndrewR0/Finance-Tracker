@@ -138,9 +138,9 @@ function BudgetLine({ row, data }: { row: BudgetRow; data: MonthBudgets }) {
   return (
     <tr className={isSub ? "child" : "parent"}>
       <td>{row.name}</td>
-      <td className="r num">{formatMoney0(budget)}</td>
-      <td className="r num">{formatMoney0(row.spent_cents)}</td>
-      <td className={`r num ${left < 0 ? "down" : ""}`}>{formatMoney0(left)}</td>
+      <td className="r num" data-label="Budget">{formatMoney0(budget)}</td>
+      <td className="r num" data-label="Spent">{formatMoney0(row.spent_cents)}</td>
+      <td className={`r num ${left < 0 ? "down" : ""}`} data-label="Left">{formatMoney0(left)}</td>
       <td>
         <div className={`budget-bar ${status}`} title={`${Math.round((row.spent_cents / budget) * 100)}% of the budget spent`}>
           <i style={{ width: `${barPercent(row.spent_cents, budget)}%` }} />
@@ -197,8 +197,8 @@ function EditLine({ row, month }: { row: BudgetRow; month: string }) {
   return (
     <tr className={row.parent_id === null ? "parent" : "child"}>
       <td>{row.name}</td>
-      <td className="r num muted">{row.suggested_cents ? formatMoney0(row.suggested_cents) : "—"}</td>
-      <td className="r num muted">{formatMoney0(row.spent_cents)}</td>
+      <td className="r num muted" data-label="Avg">{row.suggested_cents ? formatMoney0(row.suggested_cents) : "—"}</td>
+      <td className="r num muted" data-label="This month">{formatMoney0(row.spent_cents)}</td>
       <td className="r">
         <form className="budget-edit" onSubmit={onSubmit}>
           {row.suggested_cents > 0 && text === "" && (

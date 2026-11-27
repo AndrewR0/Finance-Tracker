@@ -664,3 +664,8 @@ class BudgetSet(BaseModel):
 
     month: dt.date  # any day in the month; the budget starts on its 1st
     amount_cents: Annotated[StrictInt, Field(ge=0)] | None
+
+
+class BackupStatus(BaseModel):
+    last_backup_at: datetime | None  # local time of the newest backup; None if there are none
+    count: int  # backups kept

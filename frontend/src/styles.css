@@ -1970,3 +1970,82 @@ table.names tr.child td:first-child {
 .budgettable tr.child td:first-child {
   padding-left: 22px;
 }
+
+/* Phone layouts for the Investments, Budgets and Retirement tables. They share .accttable's
+   "one block per row" approach; data-label puts a small label in front of a number. */
+@media (max-width: 760px) {
+  .holdtable thead {
+    display: block;
+  }
+  .holdtable thead tr:not(.dayhead) {
+    display: none;
+  }
+  .holdtable thead tr.dayhead td {
+    display: block;
+    padding: 8px;
+  }
+  .holdtable tbody tr,
+  .budgettable tbody tr,
+  .tradetable tbody tr,
+  .kvtable tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 12px;
+    row-gap: 3px;
+    align-items: center;
+    padding: 9px 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  .holdtable tbody tr > td,
+  .budgettable tbody tr > td,
+  .tradetable tbody tr > td,
+  .kvtable tbody tr > td {
+    padding: 0;
+    border: 0;
+    min-width: 0;
+    text-align: left;
+  }
+  .holdtable td:empty,
+  .budgettable td:empty {
+    display: none;
+  }
+  td[data-label]::before {
+    content: attr(data-label) " ";
+    color: var(--ink3);
+    font-size: 12px;
+  }
+
+  /* holding: name | value; shares | gain; price | cost */
+  .holdtable tbody tr > td:nth-child(1) { grid-area: 1 / 1; }
+  .holdtable tbody tr > td:nth-child(5) { grid-area: 1 / 2; text-align: right; font-weight: 600; }
+  .holdtable tbody tr > td:nth-child(2) { grid-area: 2 / 1; }
+  .holdtable tbody tr > td:nth-child(6) { grid-area: 2 / 2; text-align: right; }
+  .holdtable tbody tr > td:nth-child(3) { grid-area: 3 / 1; }
+  .holdtable tbody tr > td:nth-child(4) { grid-area: 3 / 2; text-align: right; }
+  .holdtable tbody tr.reconcile > td { grid-column: 1 / -1; }
+  .holdtable tbody tr.total { border-top: 1px solid var(--line); }
+  .holdtable tbody tr.total > td { border-top: 0; }
+
+  /* budget: name | left; bar across; spent | budget */
+  .budgettable tbody tr > td:nth-child(1) { grid-area: 1 / 1; }
+  .budgettable tbody tr > td:nth-child(4) { grid-area: 1 / 2; text-align: right; }
+  .budgettable tbody tr > td:nth-child(5) { grid-column: 1 / -1; grid-row: 2; padding: 4px 0; }
+  .budgettable tbody tr > td:nth-child(3) { grid-area: 3 / 1; }
+  .budgettable tbody tr > td:nth-child(2) { grid-area: 3 / 2; text-align: right; }
+  .budgettable tr.child td:first-child { padding-left: 14px; }
+  /* editing: name | box; average | this month */
+  .budgettable tbody tr:has(.budget-edit) > td:nth-child(4) { grid-area: 1 / 2; grid-column: 2; grid-row: 1; }
+  .budgettable tbody tr:has(.budget-edit) > td:nth-child(2) { grid-area: 2 / 1; text-align: left; }
+  .budgettable tbody tr:has(.budget-edit) > td:nth-child(3) { grid-area: 2 / 2; text-align: right; }
+
+  /* trade: date kind ticker | amount; shares below */
+  .tradetable tbody tr > td:nth-child(1) { grid-area: 1 / 1; font-size: 12px; }
+  .tradetable tbody tr > td:nth-child(2) { grid-area: 2 / 1; }
+  .tradetable tbody tr > td:nth-child(3) { grid-area: 3 / 1; }
+  .tradetable tbody tr > td:nth-child(4) { grid-area: 2 / 2; text-align: right; }
+  .tradetable tbody tr > td:nth-child(5) { grid-area: 1 / 2; text-align: right; }
+  .tradetable tbody tr > td:nth-child(6) { grid-area: 3 / 2; text-align: right; }
+
+  /* label | value */
+  .kvtable tbody tr > td:nth-child(2) { text-align: right; }
+}

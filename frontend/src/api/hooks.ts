@@ -12,6 +12,10 @@ export function useHealth() {
   return useQuery({ queryKey: ["health"], queryFn: api.health, retry: false, refetchInterval: 15000 });
 }
 
+export function useBackupStatus() {
+  return useQuery({ queryKey: ["backup-status"], queryFn: api.backupStatus, refetchInterval: 10 * 60 * 1000 });
+}
+
 export function useAccounts() {
   return useQuery({ queryKey: ["accounts"], queryFn: api.accounts });
 }

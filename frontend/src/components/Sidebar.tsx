@@ -1,6 +1,9 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 
+import { useBackupStatus } from "../api/hooks";
+import { backupLabel } from "../lib/backups";
+
 const ICONS: Record<string, ReactNode> = {
   dashboard: (
     <>
@@ -82,7 +85,20 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
-      <div className="foot">Local only · your data stays on this PC</div>
+      <BackupLine />
     </aside>
+  );
+}
+
+/** "Backed up today, 3:00 AM", or a warning when the nightly backup seems to have stopped. */
+function BackupLine() {
+  const status = useBackupStatus().data;
+  if (!status) return <div className="foot">Your data stays on your own server</div>;
+  const label = backupLabel(status.last_backup_at ?? null, new Date());
+  return (
+    <div className="foot" title={`${status.count} backups kept`} style={label.stale ? { color: "var(--bad)" } : undefined}>
+      {label.stale ? "⚠ " : ""}
+      {label.text}
+    </div>
   );
 }

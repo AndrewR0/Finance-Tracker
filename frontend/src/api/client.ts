@@ -98,6 +98,7 @@ export type DateRanges = {
 
 export const api = {
   health: () => request<{ status: string }>("GET", "/api/health"),
+  backupStatus: () => request<Schemas["BackupStatus"]>("GET", "/api/backups/status"),
 
   accounts: () => request<Account[]>("GET", "/api/accounts"),
   createAccount: (body: Schemas["AccountCreate"]) => request<Schemas["AccountRead"]>("POST", "/api/accounts", body),

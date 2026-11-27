@@ -213,7 +213,7 @@ export function Retirement() {
 
         <div className="card">
           <h3>What's counted today</h3>
-          <table className="accttable">
+          <table className="accttable kvtable">
             <tbody>
               {inputs.accounts.map((a) => (
                 <tr key={a.account_id}>

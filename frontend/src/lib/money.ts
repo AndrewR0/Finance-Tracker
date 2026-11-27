@@ -23,6 +23,11 @@ export function formatMoneyShort(cents: number): string {
   const dollars = Math.round(Math.abs(cents) / 100);
   const sign = cents < 0 && dollars > 0 ? MINUS : "";
   if (dollars < 1000) return `${sign}$${dollars}`;
+  if (dollars >= 1_000_000) {
+    const millions = dollars / 1_000_000;
+    const text = millions < 10 ? millions.toFixed(1).replace(/\.0$/, "") : String(Math.round(millions));
+    return `${sign}$${text}M`;
+  }
   const thousands = dollars / 1000;
   const text = thousands < 10 ? thousands.toFixed(1).replace(/\.0$/, "") : String(Math.round(thousands));
   return `${sign}$${text}k`;
