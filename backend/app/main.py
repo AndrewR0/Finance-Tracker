@@ -23,6 +23,7 @@ from app.routers import (
     investments,
     recurring,
     retirement,
+    review,
     transactions,
     transfers,
 )
@@ -80,6 +81,7 @@ app.include_router(investments.router)
 app.include_router(retirement.router)
 app.include_router(budgets.router)
 app.include_router(backups.router)
+app.include_router(review.router)
 
 
 @app.get("/api/health")

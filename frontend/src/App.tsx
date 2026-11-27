@@ -12,6 +12,7 @@ import { Import } from "./pages/Import";
 import { Investments } from "./pages/Investments";
 import { Recurring } from "./pages/Recurring";
 import { Retirement } from "./pages/Retirement";
+import { Review } from "./pages/Review";
 import { Transactions } from "./pages/Transactions";
 import { PanelProvider } from "./state/panel";
 import { PeriodProvider } from "./state/period";
@@ -32,6 +33,7 @@ export function App() {
             <Route path="/budgets" element={<Budgets />} />
             <Route path="/investments" element={<Investments />} />
             <Route path="/retirement" element={<Retirement />} />
+            <Route path="/review" element={<Review />} />
             <Route path="/recurring" element={<Recurring />} />
             <Route path="/goals" element={<Goals />} />
             <Route path="*" element={<Navigate to="/" replace />} />

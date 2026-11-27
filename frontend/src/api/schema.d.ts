@@ -808,6 +808,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Review
+         * @description ?year=2026 (defaults to this year). A year in progress covers Jan 1 to today.
+         */
+        get: operations["review_api_review_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -1690,6 +1710,30 @@ export interface components {
              */
             k401_yearly_cents: number;
         };
+        /** ReviewTopItem */
+        ReviewTopItem: {
+            /** Id */
+            id: number | null;
+            /** Name */
+            name: string;
+            /** Cents */
+            cents: number;
+            /** Previous Cents */
+            previous_cents: number;
+            /** Count */
+            count: number;
+        };
+        /** ReviewTotals */
+        ReviewTotals: {
+            /** Income Cents */
+            income_cents: number;
+            /** Spending Cents */
+            spending_cents: number;
+            /** Saved Cents */
+            saved_cents: number;
+            /** Invested Cents */
+            invested_cents: number;
+        };
         /**
          * SecurityKind
          * @enum {string}
@@ -1954,6 +1998,49 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** YearInReview */
+        YearInReview: {
+            /** Year */
+            year: number;
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /** Partial */
+            partial: boolean;
+            totals: components["schemas"]["ReviewTotals"];
+            previous: components["schemas"]["ReviewTotals"] | null;
+            /** Months */
+            months: components["schemas"]["CashFlowMonth"][];
+            /** Top Categories */
+            top_categories: components["schemas"]["ReviewTopItem"][];
+            /** Top Payees */
+            top_payees: components["schemas"]["ReviewTopItem"][];
+            /** Transactions */
+            transactions: number;
+            /** Net Worth Start Cents */
+            net_worth_start_cents: number;
+            /** Net Worth End Cents */
+            net_worth_end_cents: number;
+            /** Investments Start Cents */
+            investments_start_cents: number;
+            /** Investments End Cents */
+            investments_end_cents: number;
+            /** Sp500 Return Bp */
+            sp500_return_bp: number | null;
+            /** Budget Months On Track */
+            budget_months_on_track: number;
+            /** Budget Months Total */
+            budget_months_total: number;
+            /** Years */
+            years: number[];
         };
     };
     responses: never;
@@ -3486,6 +3573,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BackupStatus"];
+                };
+            };
+        };
+    };
+    review_api_review_get: {
+        parameters: {
+            query?: {
+                year?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["YearInReview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -44,6 +44,14 @@ export function useBudgets(month: string) {
   });
 }
 
+export function useReview(year: number) {
+  return useQuery({
+    queryKey: ["review", year],
+    queryFn: () => api.review(year),
+    placeholderData: (previous) => previous, // keep the page while another year loads
+  });
+}
+
 export function useChecklist() {
   return useQuery({ queryKey: ["checklist"], queryFn: api.checklist });
 }

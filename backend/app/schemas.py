@@ -671,3 +671,47 @@ class BudgetSet(BaseModel):
 class BackupStatus(BaseModel):
     last_backup_at: datetime | None  # local time of the newest backup; None if there are none
     count: int  # backups kept
+
+
+# ---- Year in Review ----
+
+class ReviewTotals(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    income_cents: int
+    spending_cents: int
+    saved_cents: int
+    invested_cents: int
+
+
+class ReviewTopItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int | None
+    name: str
+    cents: int
+    previous_cents: int  # the year before, same days
+    count: int  # transactions (payees only; 0 for categories)
+
+
+class YearInReview(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    year: int
+    start: dt.date
+    end: dt.date  # Dec 31, or today for the current year
+    partial: bool
+    totals: ReviewTotals
+    previous: ReviewTotals | None  # the year before over the same days; None before your data starts
+    months: list[CashFlowMonth]
+    top_categories: list[ReviewTopItem]
+    top_payees: list[ReviewTopItem]
+    transactions: int
+    net_worth_start_cents: int
+    net_worth_end_cents: int
+    investments_start_cents: int
+    investments_end_cents: int
+    sp500_return_bp: int | None  # SPY with dividends, over the same stretch; basis points (1250 = 12.5%)
+    budget_months_on_track: int
+    budget_months_total: int
+    years: list[int]

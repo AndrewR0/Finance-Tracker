@@ -36,6 +36,12 @@ const ICONS: Record<string, ReactNode> = {
     </>
   ),
   categories: <path d="M4 7h7l2 2h7v10H4z" />,
+  review: (
+    <>
+      <rect x="4" y="5" width="16" height="15" rx="2" />
+      <path d="M4 10h16M9 3v4M15 3v4" />
+    </>
+  ),
   budgets: (
     <>
       <rect x="4" y="5" width="16" height="4" rx="1" />
@@ -55,6 +61,7 @@ const LINKS: { to: string; label: string; icon: string; soon?: boolean }[] = [
   { to: "/retirement", label: "Retirement", icon: "retirement" },
   { to: "/recurring", label: "Recurring", icon: "recurring" },
   { to: "/goals", label: "Goals", icon: "goals" },
+  { to: "/review", label: "Year in Review", icon: "review" },
 ];
 
 export function Sidebar() {
