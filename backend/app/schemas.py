@@ -51,6 +51,7 @@ class AccountRead(BaseModel):
     created_at: datetime
     closed_at: datetime | None
     in_net_worth: bool  # False: the balance is left out of net worth (401k, Roth IRA)
+    reconciled_on: dt.date | None  # the latest statement date reconciled to
 
 
 class InvestmentRead(BaseModel):
@@ -615,3 +616,16 @@ class RetirementInputs(BaseModel):
     k401_12m_cents: int  # 401k contributions recorded as trades
     balance_cents: int  # all Brokerage and Retirement accounts today
     accounts: list[RetirementAccount]
+
+
+class ChecklistItem(BaseModel):
+    """One month-end chore. Derived from your data: done once the data shows it's done."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    key: str
+    kind: str  # reconcile | update_price | contribution | invest_cash
+    title: str
+    detail: str
+    done: bool
+    link: str

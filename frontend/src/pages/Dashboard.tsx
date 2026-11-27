@@ -6,6 +6,7 @@ import {
   useAccounts,
   useCashFlow,
   useCategories,
+  useChecklist,
   useGoals,
   usePace,
   useSpendingByCategory,
@@ -89,6 +90,7 @@ export function Dashboard() {
         </div>
 
         <SpendingCard rows={spending} period={period} />
+        <ChecklistCard />
         <UpcomingCard />
         <RecentCard />
         <GoalsCard />
@@ -270,6 +272,39 @@ function SpendingCard({ rows, period }: { rows: CategorySpending[] | undefined; 
 const UPCOMING_DAYS = 14;
 
 /** Bills expected in the next two weeks, from the recurring series. Always "from today", whatever period is picked. */
+/**
+ * This month's chores (reconciles, typed-in prices, 401k contributions, cash to invest).
+ * Worked out from your data, so items tick themselves off once the data shows they're done.
+ */
+function ChecklistCard() {
+  const items = useChecklist().data;
+  if (!items || items.length === 0) return null;
+  const done = items.filter((i) => i.done).length;
+  const ordered = [...items.filter((i) => !i.done), ...items.filter((i) => i.done)];
+  const month = new Date().toLocaleString("en-US", { month: "long" });
+
+  return (
+    <div className="card span2 checklist">
+      <h3>
+        Month-end <small>{done === items.length ? `All done for ${month}` : `${done} of ${items.length} done for ${month}`}</small>
+      </h3>
+      <ul>
+        {ordered.map((item) => (
+          <li key={item.key} className={item.done ? "done" : ""}>
+            <span className="tick" aria-hidden>{item.done ? "✓" : "○"}</span>
+            <div>
+              <Link className="plain-link" to={item.link}>
+                {item.title}
+              </Link>
+              <div className="muted">{item.detail}</div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function UpcomingCard() {
   const charges = useUpcoming(UPCOMING_DAYS).data;
   const tree = useCategories().data;

@@ -32,6 +32,10 @@ export function useComparison(accountId: number | null) {
   });
 }
 
+export function useChecklist() {
+  return useQuery({ queryKey: ["checklist"], queryFn: api.checklist });
+}
+
 export function useRetirement() {
   return useQuery({ queryKey: ["retirement"], queryFn: api.retirement });
 }

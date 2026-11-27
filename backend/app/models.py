@@ -35,6 +35,9 @@ class Account(Base):
     closed_at: Mapped[datetime | None] = mapped_column()
     # False keeps the balance out of net worth: money you can't reach yet (401k, Roth IRA).
     in_net_worth: Mapped[bool] = mapped_column(default=True, server_default=true())
+    # The latest statement date you reconciled to, even when it already matched (that adds no
+    # adjustment, so it would leave no other trace). The month-end checklist reads it.
+    reconciled_on: Mapped[dt.date | None]
 
 
 class CategoryKind(enum.StrEnum):

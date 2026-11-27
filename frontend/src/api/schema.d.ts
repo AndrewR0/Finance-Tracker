@@ -342,6 +342,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dashboard/checklist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Month End Checklist
+         * @description This month's chores: reconciles, typed-in prices, 401k contributions, cash to invest.
+         */
+        get: operations["month_end_checklist_api_dashboard_checklist_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/import/preview": {
         parameters: {
             query?: never;
@@ -801,6 +821,8 @@ export interface components {
             closed_at: string | null;
             /** In Net Worth */
             in_net_worth: boolean;
+            /** Reconciled On */
+            reconciled_on: string | null;
         };
         /**
          * AccountType
@@ -838,6 +860,8 @@ export interface components {
             closed_at: string | null;
             /** In Net Worth */
             in_net_worth: boolean;
+            /** Reconciled On */
+            reconciled_on: string | null;
             /** Balance Cents */
             balance_cents: number;
             investment: components["schemas"]["InvestmentRead"] | null;
@@ -950,6 +974,24 @@ export interface components {
             change_cents: number;
             /** Change Percent */
             change_percent: number | null;
+        };
+        /**
+         * ChecklistItem
+         * @description One month-end chore. Derived from your data: done once the data shows it's done.
+         */
+        ChecklistItem: {
+            /** Key */
+            key: string;
+            /** Kind */
+            kind: string;
+            /** Title */
+            title: string;
+            /** Detail */
+            detail: string;
+            /** Done */
+            done: boolean;
+            /** Link */
+            link: string;
         };
         /**
          * Comparison
@@ -2551,6 +2593,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    month_end_checklist_api_dashboard_checklist_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChecklistItem"][];
                 };
             };
         };

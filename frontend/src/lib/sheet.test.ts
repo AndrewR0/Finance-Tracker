@@ -11,7 +11,7 @@ function row(account: string, category: string, subcategory: string, amount_cent
 
 function existingAccount(id: number, name: string, closed = false): Account {
   return {
-    id, name, type: "checking", balance_cents: 0, in_net_worth: true, investment: null,
+    id, name, type: "checking", balance_cents: 0, in_net_worth: true, reconciled_on: null, investment: null,
     created_at: "2026-01-01T00:00:00", closed_at: closed ? "2026-02-01T00:00:00" : null,
   };
 }

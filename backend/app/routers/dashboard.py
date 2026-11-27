@@ -21,7 +21,8 @@ from app.reports import (
     spending_by_category,
     spending_pace,
 )
-from app.schemas import CashFlowMonth, CategorySpending, DashboardSummary, PeriodRead, SpendingPace
+from app.checklist import checklist
+from app.schemas import CashFlowMonth, CategorySpending, ChecklistItem, DashboardSummary, PeriodRead, SpendingPace
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -145,3 +146,9 @@ def spending_by_category_report(db: DbSession, ranges: DateRanges, include_savin
     ?include_saving=true also lists "counts as saving" categories, with what was moved to savings.
     """
     return spending_by_category(db, ranges.start, ranges.end, ranges.compare, include_saving)
+
+
+@router.get("/checklist", response_model=list[ChecklistItem])
+def month_end_checklist(db: DbSession, today: Today):
+    """This month's chores: reconciles, typed-in prices, 401k contributions, cash to invest."""
+    return checklist(db, today)

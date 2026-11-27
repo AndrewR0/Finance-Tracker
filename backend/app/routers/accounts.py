@@ -123,7 +123,10 @@ def reconcile_account(account_id: int, payload: ReconcileRequest, db: DbSession)
     # Cash only: holdings get their value from prices, so "Update balance" sets the cash beside them.
     previous = get_cash(db, payload.date).get(account.id, 0)
     difference = payload.balance_cents - previous
+    if account.reconciled_on is None or payload.date > account.reconciled_on:
+        account.reconciled_on = payload.date  # remembered even when it already matched
     if difference == 0:
+        db.commit()
         return ReconcileResult(previous_balance_cents=previous, balance_cents=previous, adjustment=None)
 
     adjustment = Transaction(

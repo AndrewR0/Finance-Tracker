@@ -35,6 +35,7 @@ export type PriceStatus = Schemas["PriceStatus"];
 export type Trade = Schemas["TradeRead"];
 export type Comparison = Schemas["Comparison"];
 export type RetirementInputs = Schemas["RetirementInputs"];
+export type ChecklistItem = Schemas["ChecklistItem"];
 export type TradeKind = Schemas["TradeKind"];
 
 /** The backend answered with an error. message is FastAPI's "detail", made readable. */
@@ -147,6 +148,7 @@ export const api = {
       "/api/dashboard/spending-by-category" + query({ ...ranges, include_saving: includeSaving ? "true" : undefined }),
     ),
   recurring: () => request<Recurring[]>("GET", "/api/recurring"),
+  checklist: () => request<ChecklistItem[]>("GET", "/api/dashboard/checklist"),
 
   holdings: () => request<AccountHoldings[]>("GET", "/api/holdings"),
   setUpHoldings: (accountId: number, body: Schemas["HoldingsSetup"]) =>
