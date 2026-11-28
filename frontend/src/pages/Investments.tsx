@@ -176,6 +176,11 @@ function ComparisonCard({ accounts }: { accounts: Account[] }) {
               </b>
             </div>
           </div>
+          <div className="legend">
+            <span><i className="solid" />You</span>
+            <span><i className="dash" />Same deposits in the S&amp;P 500</span>
+            <span><i className="solid" style={{ borderTop: "1.5px solid var(--ink3)" }} />Put in</span>
+          </div>
           <BenchmarkChart comparison={comparison} />
           <p className="muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
             Each deposit (transfer in, opening balance, 401k contribution) "buys" SPY at that day's close, dividends
